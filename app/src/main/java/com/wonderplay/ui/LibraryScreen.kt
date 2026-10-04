@@ -45,7 +45,7 @@ internal fun LibraryScreen(vm: AppViewModel, favorites: List<Track>, history: Li
                 }
             }
             when (route) {
-                "all" -> LazyColumn(contentPadding = PaddingValues(bottom = 24.dp)) {
+                "all" -> LazyColumn(contentPadding = PaddingValues(bottom = 24.dp + LocalOverlayBottom.current)) {
                     item { Row(Modifier.padding(horizontal = Space.page, vertical = 4.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                         LibraryTile("Favorites", "${favorites.size} tracks", Icons.Rounded.Favorite, Modifier.weight(1f)) { onRoute("favorites") }
                         LibraryTile("On device", "${locals.size} tracks", Icons.Rounded.FolderOpen, Modifier.weight(1f)) { onRoute("local") }
@@ -62,7 +62,7 @@ internal fun LibraryScreen(vm: AppViewModel, favorites: List<Track>, history: Li
                 "albums", "artists" -> {
                     val groups = remember(allTracks, route) { allTracks.groupBy { if (route == "albums") it.album.ifBlank { "Singles & unknown albums" } + " · " + it.artist else it.artist }.toSortedMap(String.CASE_INSENSITIVE_ORDER) }
                     if (groups.isEmpty()) EmptyState("A library that grows with you", "Save a favorite, start a playlist, or import your music to find it here.", Icons.Rounded.Album, "Find music", onSearch)
-                    else LazyColumn(contentPadding = PaddingValues(bottom = 24.dp)) {
+                    else LazyColumn(contentPadding = PaddingValues(bottom = 24.dp + LocalOverlayBottom.current)) {
                         items(groups.entries.toList(), key = { it.key }) { group ->
                             CollectionRow(group.key, "${group.value.size} saved tracks", group.value.first(), if (route == "albums") Icons.Rounded.Album else Icons.Rounded.Person) {
                                 onCollection(MusicCollection("library:${route}:${group.key}", group.key, "In your library", group.value.first().artworkUrl, group.value))
@@ -76,7 +76,7 @@ internal fun LibraryScreen(vm: AppViewModel, favorites: List<Track>, history: Li
                     val body = when (route) { "favorites" -> "Tap the heart on a track to keep it here."; "local" -> "Open audio files from your device. They stay on your device, ready for offline listening."; else -> "Tracks you listen to will find their way here." }
                     if (tracks.isEmpty()) EmptyState(title, body, if (route == "local") Icons.Rounded.FolderOpen else Icons.Rounded.MusicNote,
                         if (route == "local") "Choose audio files" else "Find music", if (route == "local") onImport else onSearch)
-                    else LazyColumn(contentPadding = PaddingValues(bottom = 24.dp)) {
+                    else LazyColumn(contentPadding = PaddingValues(bottom = 24.dp + LocalOverlayBottom.current)) {
                         item { CollectionActions(tracks, vm, extraLabel = if (route == "local") "Import" else null, extra = onImport) }
                         items(tracks, key = { it.id }) { track -> TrackRow(track, { vm.player.play(tracks, tracks.indexOf(track)) }, { onMenu(track) },
                             current = currentId == track.id, favorite = favorites.any { it.id == track.id }) }
@@ -158,7 +158,7 @@ private fun PlaylistScreen(playlist: Playlist, vm: AppViewModel, onBack: () -> U
             }
         }
         if (playlist.tracks.isEmpty()) EmptyState("A blank side, just for you", "Find a song, open its options, and add it to this playlist.", Icons.Rounded.PlaylistAdd, "Find music", onSearch)
-        else LazyColumn(contentPadding = PaddingValues(bottom = 24.dp)) {
+        else LazyColumn(contentPadding = PaddingValues(bottom = 24.dp + LocalOverlayBottom.current)) {
             item { CollectionActions(playlist.tracks, vm) }
             if (editing) item { Text("Use the arrows to arrange your tracks.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(horizontal = Space.page, vertical = 8.dp)) }
             items(playlist.tracks, key = { it.id }) { track ->
@@ -178,7 +178,7 @@ private fun PlaylistScreen(playlist: Playlist, vm: AppViewModel, onBack: () -> U
 internal fun CollectionScreen(collection: MusicCollection, vm: AppViewModel, onBack: () -> Unit, onMenu: (Track) -> Unit, currentId: String?) {
     Column {
         ScreenHeader(collection.title, collection.subtitle.ifBlank { "${collection.tracks.size} tracks" }, onBack)
-        LazyColumn(contentPadding = PaddingValues(bottom = 24.dp)) {
+        LazyColumn(contentPadding = PaddingValues(bottom = 24.dp + LocalOverlayBottom.current)) {
             item { Row(Modifier.padding(horizontal = Space.page, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
                 Artwork(collection.tracks.firstOrNull(), Modifier.size(110.dp), artwork = collection.artworkUrl, seed = collection.id)
                 Column(Modifier.padding(start = 20.dp)) {

@@ -34,7 +34,8 @@ import com.wonderplay.domain.Track
 internal fun HomeScreen(vm: AppViewModel, history: List<Track>, favorites: List<Track>, local: List<Track>, onSearch: () -> Unit,
     onImport: () -> Unit, onSettings: () -> Unit, onLibrary: (String) -> Unit, onMenu: (Track) -> Unit, currentId: String?) {
     val home by vm.ui.collectAsStateWithLifecycle()
-    LazyColumn(contentPadding = PaddingValues(bottom = 32.dp)) {
+    LaunchedEffect(Unit) { vm.loadDiscovery() }
+    LazyColumn(contentPadding = PaddingValues(bottom = 32.dp + LocalOverlayBottom.current)) {
         item {
             Row(Modifier.fillMaxWidth().padding(start = Space.page, end = 12.dp, top = 10.dp, bottom = 18.dp), verticalAlignment = Alignment.CenterVertically) {
                 WonderMark(Modifier.size(28.dp)); Spacer(Modifier.width(10.dp))
@@ -53,6 +54,10 @@ internal fun HomeScreen(vm: AppViewModel, history: List<Track>, favorites: List<
                 PrimaryAction("Find your next listen", Icons.Rounded.Search, Modifier.padding(top = 24.dp), onSearch)
             }
         }
+        item { SectionHeading(if(home.personalized) "Made for your listening" else "Discover a new favorite", if(home.personalized) "Inspired by your recent plays and favorites" else "Your next favorite starts here") }
+        if(home.recommendationsLoading && home.recommendations.isEmpty()) item { LinearProgressIndicator(Modifier.fillMaxWidth().padding(horizontal = Space.page)) }
+        if(home.recommendations.isNotEmpty()) item { ArtworkRail(home.recommendations, vm, onMenu) }
+        home.recommendationsError?.let { message -> item { FailureState(message, { vm.loadDiscovery(true) }) } }
         item { SectionHeading("Featured playlists", "From YouTube Music", "Refresh", vm::loadFeatured) }
         if (home.featuredLoading && home.featured.isEmpty()) item { LinearProgressIndicator(Modifier.fillMaxWidth().padding(horizontal = Space.page)) }
         home.featuredError?.let { error -> item { FailureState(error, vm::loadFeatured) } }
@@ -138,7 +143,7 @@ internal fun SearchScreen(vm: AppViewModel, query: String, tracks: List<Track>, 
         }
         if (searching) LinearProgressIndicator(Modifier.fillMaxWidth().height(2.dp).padding(horizontal = Space.page), color = MaterialTheme.colorScheme.primary, trackColor = MaterialTheme.colorScheme.surface)
         else Spacer(Modifier.height(2.dp))
-        LazyColumn(contentPadding = PaddingValues(bottom = 24.dp)) {
+        LazyColumn(contentPadding = PaddingValues(bottom = 24.dp + LocalOverlayBottom.current)) {
             if (query.isBlank()) {
                 if (recent.isNotEmpty()) {
                     item { Spacer(Modifier.height(12.dp)); SectionHeading("Recent searches", action = "Clear", onAction = vm::clearSearches) }

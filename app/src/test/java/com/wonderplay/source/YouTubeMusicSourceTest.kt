@@ -53,4 +53,13 @@ class YouTubeMusicSourceTest {
         org.junit.Assert.assertEquals(exact, YouTubeMusicSource.rankCollections("bollywood hitlist", listOf(broad, exact)).first())
     }
 
+    @Test fun publicMuxedAudioIsFallbackWhenSeparateAudioIsAbsent() {
+        fun video(id: String, resolution: String, onlyVideo: Boolean = false) = org.schabi.newpipe.extractor.stream.VideoStream.Builder().setId(id)
+            .setContent("https://example.org/$id", true).setMediaFormat(org.schabi.newpipe.extractor.MediaFormat.MPEG_4).setResolution(resolution).setIsVideoOnly(onlyVideo).build()
+        val result = YouTubeMusicSource.publicPlayback(emptyList(), listOf(video("large", "720p"), video("small", "360p")))
+        assertEquals("https://example.org/small", result.uri)
+        assertTrue(result.qualityLabel.contains("public video"))
+        assertThrows(com.wonderplay.domain.SourceException::class.java) { YouTubeMusicSource.publicPlayback(emptyList(), listOf(video("silent", "360p", true))) }
+    }
+
 }

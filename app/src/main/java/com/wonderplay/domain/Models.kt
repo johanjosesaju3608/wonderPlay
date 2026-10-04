@@ -39,7 +39,7 @@ interface MusicSource {
 
 enum class ThemeMode { DARK, LIGHT, SYSTEM }
 enum class SearchSource { YOUTUBE }
-data class AppSettings(val theme: ThemeMode = ThemeMode.DARK, val haptics: Boolean = true, val reducedMotion: Boolean = false, val wifiOnly: Boolean = false, val highQuality: Boolean = true, val albumColors: Boolean = true, val searchSource: SearchSource = SearchSource.YOUTUBE)
+data class AppSettings(val theme: ThemeMode = ThemeMode.DARK, val haptics: Boolean = true, val reducedMotion: Boolean = false, val wifiOnly: Boolean = false, val highQuality: Boolean = true, val albumColors: Boolean = true, val searchSource: SearchSource = SearchSource.YOUTUBE, val autoplay: Boolean = true)
 interface LibraryStore {
     val favorites: Flow<List<Track>>
     val history: Flow<List<Track>>

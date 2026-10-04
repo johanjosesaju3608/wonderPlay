@@ -49,6 +49,7 @@ class SourceRegistry(private val context: Context, private val library: LibraryS
     suspend fun getRelatedTracks(track: Track): List<Track> = stored().filter { it.artist==track.artist && it.id!=track.id }
     suspend fun searchCollections(query: String) = youtube.searchCollections(query)
     suspend fun discoverSongs(query: String) = youtube.discoverSongs(query)
+    suspend fun radio(track: Track) = YouTubeRadio().next(track)
     suspend fun charts() = FeaturedPlaylists().charts()
     suspend fun featuredPlaylists() = FeaturedPlaylists().load()
     suspend fun getPlaylist(id: String) = FeaturedPlaylists().open(id)

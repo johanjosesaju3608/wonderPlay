@@ -25,7 +25,7 @@ internal fun SettingsScreen(settings:AppSettings,vm:AppViewModel,onBack:()->Unit
     var clearHistory by remember { mutableStateOf(false) }
     Column {
         ScreenHeader("Settings","A little more your own.",onBack)
-        LazyColumn(contentPadding=PaddingValues(bottom=24.dp)) {
+        LazyColumn(contentPadding=PaddingValues(bottom=24.dp + LocalOverlayBottom.current)) {
             item { SectionHeading("Appearance") }
             item { Row(Modifier.fillMaxWidth().padding(horizontal=24.dp),horizontalArrangement=Arrangement.spacedBy(8.dp)) {
                 ThemeMode.entries.forEach { theme -> FilterChip(settings.theme==theme,{vm.updateSettings(settings.copy(theme=theme))},label={Text(theme.name.lowercase().replaceFirstChar(Char::uppercaseChar))},modifier=Modifier.weight(1f).heightIn(min=48.dp),shape=Shape.control) }
@@ -35,6 +35,7 @@ internal fun SettingsScreen(settings:AppSettings,vm:AppViewModel,onBack:()->Unit
             item { SettingSwitch("Reduce motion","Use immediate, simpler transitions",settings.reducedMotion) {vm.updateSettings(settings.copy(reducedMotion=it))} }
             item { Spacer(Modifier.height(16.dp));SectionHeading("Listening") }
             item { SettingSwitch("Wi-Fi-only streaming","Local files still work offline. Search and artwork may use mobile data.",settings.wifiOnly) {vm.updateSettings(settings.copy(wifiOnly=it))} }
+            item { SettingSwitch("Autoplay similar songs","Continue with related music when the queue runs low",settings.autoplay) {vm.updateSettings(settings.copy(autoplay=it))} }
             item { Information("Audio quality","The original available stream, without re-encoding. Audio quality depends on the source; wonderPlay does not claim lossless streaming.") }
             item { Spacer(Modifier.height(16.dp));SectionHeading("On this device") }
             item { ActionRow(Icons.Rounded.History,"Clear listening history") {clearHistory=true} }
@@ -53,7 +54,7 @@ internal fun SettingsScreen(settings:AppSettings,vm:AppViewModel,onBack:()->Unit
         val text by produceState(initialValue="",title) {
             value=when(title) {
                 "Sources" -> "YouTube Music is the default search catalog. Publicly available audio plays inside wonderPlay using the open-source NewPipe extractor. Restricted or unavailable tracks may not play. No account or paid-content access is implemented.\n\nChoose your own audio files through Android’s file picker for local playback. Files are not uploaded or copied.\n\nThe external YouTube Music link is available as a fallback. Remote tracks are streamed, not saved for offline playback."
-                "Privacy" -> "No accounts, ads, analytics, tracking IDs or cloud AI. Favorites, playlists, searches, settings and history stay in private app storage. Android cloud backup is disabled.\n\nSearch and streaming requests go to YouTube/Google and their media hosts. Lyrics requests go to LRCLIB and, when needed, lyrics.ovh. Artwork loads from provider hosts. Missing canonical artwork may be matched using MusicBrainz and Cover Art Archive. Providers receive your IP address and requested music metadata.\n\nSelected local files use Android’s read grants. No microphone, camera, location or broad storage access. Uninstalling deletes your local library metadata."
+                "Privacy" -> "No accounts, ads, analytics, tracking IDs or cloud AI. Favorites, playlists, searches, settings and history stay in private app storage. Android cloud backup is disabled.\n\nSearch, recommendations, autoplay radio and streaming requests go to YouTube/Google and their media hosts. Lyrics requests go to LRCLIB and, when needed, NetEase and lyrics.ovh. Artwork loads from provider hosts. Missing canonical artwork may be matched using MusicBrainz and Cover Art Archive. Providers receive your IP address and requested music metadata.\n\nSelected local files use Android’s read grants. No microphone, camera, location or broad storage access. Uninstalling deletes your local library metadata."
                 else -> withContext(Dispatchers.IO) { listOf("THIRD-PARTY-NOTICES.txt","wonderPlay-MIT.txt","Apache-2.0.txt","GPL-3.0.txt").joinToString("\n\n") { name -> context.assets.open("licenses/$name").bufferedReader().use {it.readText()} } }
             }
         }

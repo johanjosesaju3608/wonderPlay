@@ -75,9 +75,9 @@ fun WonderPlayRoot(viewModel:AppViewModel) {
         CompositionLocalProvider(LocalWonderHaptics provides haptics) {
             Surface(Modifier.fillMaxSize(),color=MaterialTheme.colorScheme.background) {
                 Box(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding().imePadding()) {
-                    Column(Modifier.fillMaxSize()) {
+                    CompositionLocalProvider(LocalOverlayBottom provides (if(player.current != null) 184.dp else 100.dp)) {
                         val page = Page(tab, showSettings, detail != null || ui.detailLoading, detail, libraryRoute)
-                        AnimatedContent(page, modifier = Modifier.weight(1f).fillMaxWidth().clipToBounds(), contentKey = { it.key },
+                        AnimatedContent(page, modifier = Modifier.fillMaxSize().clipToBounds(), contentKey = { it.key },
                             transitionSpec = {
                                 val duration = if(settings.reducedMotion) 0 else 240
                                 val direction = if(targetState.order >= initialState.order) 1 else -1
@@ -93,8 +93,6 @@ fun WonderPlayRoot(viewModel:AppViewModel) {
                                 else -> LibraryScreen(vm,favorites,history,locals,playlists,shown.library,{libraryRoute=it},import,search,{collection=it},{menu=it},player.current?.id)
                             }
                         }
-                        if(player.current!=null) Spacer(Modifier.height(84.dp))
-                        Spacer(Modifier.height(88.dp))
                     }
                     FloatingNavigation(tab, { label -> focusManager.clearFocus(); keyboard?.hide(); haptics.perform(HapticEvent.SELECT); if(label=="Search" && tab!="Search") vm.search(""); tab=label; showSettings=false; collection=null; vm.closeDetail() }, Modifier.align(Alignment.BottomCenter))
                     player.current?.let { PlayerSurface(player,vm,expanded,{expanded=it},favorites.any { t->t.id==it.id },{vm.toggleFavorite(it)},{queue=true},{menu=it}) }

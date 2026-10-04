@@ -6,7 +6,15 @@ A quiet, open-source Android music player with real streaming, a local-first lib
 
 ## Install
 
-Download **wonderPlay-1.0.5.apk** from [Releases](https://github.com/johanjosesaju3608/wonderPlay/releases). Android 8.0 (API 26) or newer is supported. The app targets Android 16 (API 36), and the universal APK supports modern Samsung Galaxy devices, including the S25. Android may ask you to allow installation from your browser or file manager.
+Download **wonderPlay-1.0.6.apk** from [Releases](https://github.com/johanjosesaju3608/wonderPlay/releases). Android 8.0 (API 26) or newer is supported. The app targets Android 16 (API 36), and the universal APK supports modern Samsung Galaxy devices, including the S25. Android may ask you to allow installation from your browser or file manager.
+
+## New in 1.0.6
+
+- Free lyrics fallback: LRCLIB first, then metadata-matched NetEase, then lyrics.ovh. Repeatedly failing fallback providers are temporarily deprioritized. No API key is required.
+- Full-screen lyrics can switch to provider romanization or on-device Latin transliteration on Android 10+, when supported. Timestamps and line seeking are preserved.
+- Content scrolls behind the floating navigation and mini-player. Tab icons briefly shrink and dim, then recover as the selected pill expands, without a ripple.
+- Home includes listening-based recommendations. Optional autoplay adds YouTube Music radio suggestions when the queue runs low; local songs are excluded.
+- Media3 preloads up to eight seconds of the next track. Public playback can use audio from a muxed stream if a separate audio stream is unavailable.
 
 ## New in 1.0.5
 
@@ -107,7 +115,7 @@ The foreground service owns audio; activity recreation does not create another p
 
 ## Privacy
 
-Library metadata and settings stay in private app storage; Android cloud backup is disabled. YouTube/Google receives search/track/stream, charts, featured-playlist and recommendation artist-search requests. LRCLIB and lyrics.ovh receive song metadata for lyrics lookup. Artwork comes from provider hosts, with MusicBrainz/Cover Art Archive fallback for missing remote artwork. Providers receive ordinary network metadata such as your IP address. There is no developer-operated backend. See [PRIVACY.md](PRIVACY.md).
+Library metadata and settings stay in private app storage; Android cloud backup is disabled. YouTube/Google receives search/track/stream, charts, featured-playlist recommendation artist-search and radio requests. LRCLIB, NetEase and lyrics.ovh receive song metadata for lyrics lookup. Artwork comes from provider hosts, with MusicBrainz/Cover Art Archive fallback for missing remote artwork. Providers receive ordinary network metadata such as your IP address. There is no developer-operated backend. See [PRIVACY.md](PRIVACY.md).
 
 ## Validation and limits
 

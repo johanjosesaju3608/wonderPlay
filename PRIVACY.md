@@ -14,10 +14,11 @@ Library data is private app storage. Android cloud backup is disabled. Clearing 
 - Artwork hosts returned by the public provider: requests for cover images displayed in the app.
 - MusicBrainz (`musicbrainz.org`), where canonical artwork matching is requested: normalized artist/song text. Lookups are bounded and rate limited.
 - Cover Art Archive (`coverartarchive.org`, potentially redirecting to `archive.org` infrastructure): release IDs and cover image requests after a metadata match.
-- YouTube/Google (`music.youtube.com`, `youtube.com`, Google video/image hosts): featured-playlist requests, selected searches, track identifiers, public player metadata and audio requests via NewPipe Extractor. External service links remain available.
+- YouTube/Google (`music.youtube.com`, `youtube.com`, Google video/image hosts): featured-playlist requests, selected searches, recommendation and radio requests, track identifiers, public player metadata and audio requests via NewPipe Extractor. External service links remain available.
 
 - LRCLIB (`lrclib.net`): song title, artist, album and duration for synced/plain lyrics lookup.
-- lyrics.ovh (`api.lyrics.ovh`): artist and song title when LRCLIB has no usable match. Lyrics are cached only in memory (up to 40 tracks). External lyrics search opens the browser with title and artist.
+- NetEase (`music.163.com`): song title and artist for matching, then the matched song identifier for lyrics when LRCLIB has no usable result.
+- lyrics.ovh (`api.lyrics.ovh`): artist and song title when earlier providers have no usable result. Lyrics are cached only in memory (up to 40 tracks). External lyrics search opens the browser with title and artist.
 
 These providers receive ordinary HTTP information, including the user's IP address. wonderPlay adds no persistent device identifier. Third-party providers have independent policies and availability. Search does not use any remote AI model.
 
@@ -36,3 +37,5 @@ Wi-Fi-only restrictions are enforced for remote playback. Browsing/search, lyric
 There is no microphone, camera, location, contacts, phone state, broad file access or advertising ID permission. Media-session notifications use Android's media notification handling without an unrelated onboarding permission wall.
 
 Recommendations rank music on your device using recent remote listening and favorites. Up to three preferred artist names are sent to YouTube Music to find new songs. Local-file metadata is excluded. There is no cloud inference or developer recommendation backend. Charts and starter discovery also use anonymous YouTube Music requests.
+
+Optional autoplay sends the current remote track identifier to YouTube Music for radio suggestions. The next track may be resolved and buffered before the current song finishes. Wi-Fi-only playback restrictions also apply to that buffering. Romanization uses provider-supplied text or Android’s on-device ICU transliteration; lyrics are not sent to a translation service.

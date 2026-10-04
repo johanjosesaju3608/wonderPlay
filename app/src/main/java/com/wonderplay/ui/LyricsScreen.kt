@@ -35,6 +35,9 @@ import com.wonderplay.domain.Track
 import com.wonderplay.source.LrcParser
 import com.wonderplay.source.Lyrics
 import com.wonderplay.source.LyricsState
+import com.wonderplay.source.Romanization
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 @Composable
 internal fun LyricsPanel(vm: AppViewModel, player: PlayerState) {
@@ -96,9 +99,12 @@ internal fun LyricsPanelContent(state: LyricsState, track: Track, positionMs: Lo
 internal fun FullLyrics(lyrics: Lyrics, track: Track, positionMs: Long, onSeek: (Long) -> Unit, onToggle: () -> Unit, playing: Boolean, onDismiss: () -> Unit) {
     val reduced = LocalReducedMotion.current
     val scroll = rememberLazyListState()
-    val active = LrcParser.activeIndex(lyrics.lines, positionMs)
+    var romanized by rememberSaveable(track.id) { mutableStateOf(false) }
+    val roman by produceState<Lyrics?>(null, lyrics) { value = withContext(Dispatchers.Default) { Romanization.variant(lyrics) } }
+    val shown = if(romanized) roman ?: lyrics else lyrics
+    val active = LrcParser.activeIndex(shown.lines, positionMs)
     var follow by rememberSaveable(track.id) { mutableStateOf(true) }
-    LaunchedEffect(active, follow) {
+    LaunchedEffect(active, follow, romanized) {
         if (follow && active >= 0) {
             if (reduced) scroll.scrollToItem(active) else scroll.animateScrollToItem(active)
         }
@@ -114,13 +120,17 @@ internal fun FullLyrics(lyrics: Lyrics, track: Track, positionMs: Long, onSeek: 
                     }
                     TactileIcon(if(playing) Icons.Rounded.Pause else Icons.Rounded.PlayArrow, if(playing) "Pause lyrics playback" else "Play lyrics playback", onToggle)
                 }
-                if (lyrics.lines.isNotEmpty()) {
+                if(roman != null) Row(Modifier.padding(horizontal = 28.dp), verticalAlignment = Alignment.CenterVertically) {
+                    FilterChip(romanized, { romanized = !romanized }, label = { Text(if(romanized) "Original" else "Romanized") }, shape = androidx.compose.foundation.shape.CircleShape)
+                    if(romanized) Text(roman?.romanizationSource.orEmpty(), Modifier.padding(start = 12.dp), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                if (shown.lines.isNotEmpty()) {
                     Row(Modifier.padding(horizontal = 24.dp), verticalAlignment = Alignment.CenterVertically) {
                         Text("Synced · ${lyrics.provider}", Modifier.weight(1f), style = MaterialTheme.typography.labelSmall)
                         FilterChip(follow, { follow = !follow }, label = { Text(if(follow) "Following" else "Follow playback") })
                     }
                     LazyColumn(state = scroll, modifier = Modifier.weight(1f).fillMaxWidth(), contentPadding = PaddingValues(start = 28.dp, end = 28.dp, top = 32.dp, bottom = 240.dp), verticalArrangement = Arrangement.spacedBy(24.dp)) {
-                        itemsIndexed(lyrics.lines) { index, line ->
+                        itemsIndexed(shown.lines) { index, line ->
                             val color by animateColorAsState(if(index == active) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface.copy(alpha = .42f), tween(if(reduced) 0 else 250), label = "Active lyric")
                             Text(line.text.ifBlank { "♪" }, Modifier.fillMaxWidth().clickable { onSeek(line.timeMs) }, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold, color = color)
                         }
@@ -128,7 +138,7 @@ internal fun FullLyrics(lyrics: Lyrics, track: Track, positionMs: Long, onSeek: 
                 } else {
                     Text("Unsynced · ${lyrics.provider}", Modifier.padding(horizontal = 28.dp, vertical = 12.dp), style = MaterialTheme.typography.labelSmall)
                     LazyColumn(Modifier.weight(1f).fillMaxWidth(), contentPadding = PaddingValues(28.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                        itemsIndexed(lyrics.plain.lines()) { _, line -> Text(line, style = MaterialTheme.typography.headlineSmall) }
+                        itemsIndexed(shown.plain.lines()) { _, line -> Text(line, style = MaterialTheme.typography.headlineSmall) }
                     }
                 }
             }

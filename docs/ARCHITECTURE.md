@@ -19,7 +19,7 @@ Room stores metadata, ordered playlist membership, favorites, history, local fil
 
 ## Source boundary
 
-MusicSource exposes search, track/artist/album/playlist metadata, playback resolution and related tracks. The local source handles user-selected URIs. YouTubeMusicSource uses NewPipe Extractor for YouTube Music song search and public audio resolution. YouTube Music is the remote catalog. FeaturedPlaylists parses anonymous home-feed playlist endpoints. LyricsRepository cancels stale requests, caches up to 40 successful lookups in memory, and uses LRCLIB with lyrics.ovh fallback. There is no account or paid-content access.
+MusicSource exposes search, track/artist/album/playlist metadata, playback resolution and related tracks. The local source handles user-selected URIs. YouTubeMusicSource uses NewPipe Extractor for YouTube Music song search and public audio resolution. YouTube Music is the remote catalog. FeaturedPlaylists parses anonymous home-feed playlist endpoints. LyricsRepository cancels stale requests, caches up to 40 successful lookups in memory, and uses LRCLIB, then strictly matched NetEase, then lyrics.ovh fallback, with session-local fallback health ranking. There is no account or paid-content access.
 
 ## Artwork and metadata
 
@@ -34,3 +34,5 @@ No developer server receives library or device data. Only source/music metadata 
 Song search keeps its own NewPipe paging cursor. Collection search uses an independent album extractor plus the dedicated YouTube Music featured-playlist filter, with conservative editorial ID checks. Both jobs are cancelled/replaced when the query changes. Exact collection names rank before broad matches.
 
 The service anchors shuffle order to the current queue occurrence when shuffle is enabled or the queue is replaced. The controller publishes Media3's playback order for Up Next. Local tracks do not request lyrics. The floating navigation uses the existing dynamic Material colors and honors reduced motion.
+
+Media3 preloads eight seconds of the next queue item. Near the end of a remote queue, anonymous YouTube Music radio suggestions are filtered for duplicate recordings and appended only if the queue occurrence snapshot remains unchanged. Autoplay is optional and excludes local files.

@@ -56,4 +56,17 @@ class LyricsIntegrationTest {
         compose.onNodeWithText("Show lyrics").assertDoesNotExist()
     }
 
+    @Test fun romanizationPillPreservesSeekingAndReturnsToOriginal() {
+        val original = Lyrics(lines = listOf(com.wonderplay.source.LyricLine(1000, "नमस्ते"), com.wonderplay.source.LyricLine(5000, "दुनिया")))
+        var sought = -1L
+        compose.setContent { WonderTheme(AppSettings(reducedMotion = true)) { FullLyrics(original, track, 0, { sought = it }, {}, false, {}) } }
+        compose.waitUntil(5000) { compose.onAllNodesWithText("Romanized").fetchSemanticsNodes().isNotEmpty() }
+        compose.onNodeWithText("Romanized").performClick()
+        val roman = com.wonderplay.source.Romanization.variant(original)!!
+        compose.onNodeWithText(roman.lines[1].text).performClick()
+        compose.runOnIdle { assertEquals(5000L, sought) }
+        compose.onNodeWithText("Original").performClick()
+        compose.onNodeWithText("नमस्ते").assertIsDisplayed()
+    }
+
 }

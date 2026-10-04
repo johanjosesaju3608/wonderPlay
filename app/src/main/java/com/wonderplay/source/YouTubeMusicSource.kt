@@ -20,6 +20,8 @@ import org.schabi.newpipe.extractor.services.youtube.linkHandler.YoutubeSearchQu
 import org.schabi.newpipe.extractor.playlist.PlaylistInfoItem
 import org.schabi.newpipe.extractor.stream.StreamInfo
 import org.schabi.newpipe.extractor.stream.StreamInfoItem
+import org.schabi.newpipe.extractor.stream.AudioStream
+import org.schabi.newpipe.extractor.stream.VideoStream
 import java.io.IOException
 import java.util.concurrent.TimeUnit
 
@@ -77,9 +79,7 @@ class YouTubeMusicSource : MusicSource {
     }
     override suspend fun resolvePlayback(track: Track): PlaybackSource = extract {
         val info = StreamInfo.getInfo(ServiceList.YouTube, "https://www.youtube.com/watch?v=${validId(track.sourceId)}")
-        val audio = info.audioStreams.filter { it.isUrl && it.content.startsWith("https://") }
-            .maxByOrNull { it.averageBitrate } ?: throw SourceException("No public audio stream is available for this track.")
-        PlaybackSource(audio.content, audio.format?.mimeType, "${audio.averageBitrate.coerceAtLeast(0)} kbps · ${audio.format?.name ?: "Audio"}")
+        publicPlayback(info.audioStreams, info.videoStreams)
     }
     override suspend fun getArtist(id: String): Artist = Artist(id, id, tracks = search(id).tracks)
     override suspend fun getAlbum(id: String): MusicCollection = MusicCollection(id, id, tracks = search(id).tracks)
@@ -96,6 +96,17 @@ class YouTubeMusicSource : MusicSource {
         catch (error: Exception) { throw SourceException("YouTube Music could not provide this request. Try again or choose another track.", error) }
 
     companion object {
+        internal fun publicPlayback(audioStreams: List<AudioStream>, videoStreams: List<VideoStream>): PlaybackSource {
+            val audio = audioStreams.filter { it.isUrl && it.content.startsWith("https://") }.maxByOrNull { it.averageBitrate }
+            if(audio != null) return PlaybackSource(audio.content, audio.format?.mimeType, "${audio.averageBitrate.coerceAtLeast(0)} kbps · ${audio.format?.name ?: "Audio"}")
+            // Some public videos expose muxed audio/video but no separate audio stream.
+            // Use the smallest such stream with video decoding disabled by the service.
+            val muxed = videoStreams.filter { !it.isVideoOnly && it.isUrl && it.content.startsWith("https://") }
+                .minByOrNull { it.resolution.filter(Char::isDigit).toIntOrNull() ?: Int.MAX_VALUE }
+                ?: throw SourceException("No playable public stream was returned. Retry or open this track in YouTube Music.")
+            return PlaybackSource(muxed.content, muxed.format?.mimeType, "Audio from public video stream")
+        }
+
         @Volatile private var initialized = false
         @Synchronized private fun initialize() {
             if (!initialized) { NewPipe.init(YouTubeDownloader()); initialized = true }

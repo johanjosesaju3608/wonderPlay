@@ -36,6 +36,13 @@ import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.withTimeout
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.TimeoutCancellationException
+import com.wonderplay.domain.RadioPolicy
+import com.wonderplay.source.SourceRegistry
 import okhttp3.OkHttpClient
 
 /** The service exclusively owns the player; screens only hold a MediaController. */
@@ -48,6 +55,9 @@ class PlaybackService : MediaSessionService() {
     private lateinit var library: LibraryStore
     private lateinit var resolver: PlaybackResolver
     private lateinit var networkPolicy: PlaybackNetworkPolicy
+    private lateinit var sources: SourceRegistry
+    private var radioJob: Job? = null
+    private var radioRetryAt = 0L
     private var session: MediaSession? = null
     private var userTouchedQueue = false
     private var restoreComplete = false
@@ -59,6 +69,7 @@ class PlaybackService : MediaSessionService() {
         super.onCreate()
         val container = (application as WonderPlayApp).container
         library = container.library
+        sources = container.sources
         networkPolicy = PlaybackNetworkPolicy(this)
         resolver = PlaybackResolver(container.sources, networkPolicy)
         val http = OkHttpClient.Builder().connectTimeout(12, TimeUnit.SECONDS)
@@ -82,6 +93,8 @@ class PlaybackService : MediaSessionService() {
             .setHandleAudioBecomingNoisy(true)
             .setWakeMode(C.WAKE_MODE_NETWORK)
             .build()
+        player.setPreloadConfiguration(ExoPlayer.PreloadConfiguration(8_000_000L))
+        player.trackSelectionParameters = player.trackSelectionParameters.buildUpon().setTrackTypeDisabled(C.TRACK_TYPE_VIDEO, true).build()
         player.addListener(object : Player.Listener {
             override fun onEvents(player: Player, events: Player.Events) {
                 val items = (0 until player.mediaItemCount).map { player.getMediaItemAt(it).mediaId }
@@ -95,6 +108,7 @@ class PlaybackService : MediaSessionService() {
                 }
                 if (events.containsAny(Player.EVENT_TIMELINE_CHANGED, Player.EVENT_MEDIA_ITEM_TRANSITION,
                         Player.EVENT_PLAY_WHEN_READY_CHANGED, Player.EVENT_POSITION_DISCONTINUITY)) persist()
+                scheduleRadio()
                 if (player.isPlaying && recordedOccurrence != player.currentMediaItem?.mediaId) {
                     recordedOccurrence = player.currentMediaItem?.mediaId
                     player.currentMediaItem?.let(TrackMediaCodec::track)?.let { track ->
@@ -112,6 +126,7 @@ class PlaybackService : MediaSessionService() {
                     if (controller.packageName != packageName) {
                         return Futures.immediateFailedFuture(SecurityException("Only wonderPlay can edit this queue"))
                     }
+                    radioJob?.cancel(); radioRetryAt = 0L
                     userTouchedQueue = true
                     return try { Futures.immediateFuture(mediaItems.map(TrackMediaCodec::playable)) }
                     catch (error: Exception) { Futures.immediateFailedFuture(error) }
@@ -127,6 +142,7 @@ class PlaybackService : MediaSessionService() {
         scope.launch {
             library.settings.catch { emit(com.wonderplay.domain.AppSettings()) }.collect { settings ->
                 networkPolicy.settings = settings
+                if(!settings.autoplay) radioJob?.cancel() else scheduleRadio()
                 // Adaptive providers can offer alternatives. Fixed MP3 sources keep their
                 // actual source representation; the UI never promises invented fidelity.
                 player.trackSelectionParameters = player.trackSelectionParameters.buildUpon()
@@ -146,7 +162,37 @@ class PlaybackService : MediaSessionService() {
             persist()
         }
         scope.launch {
-            while (true) { delay(3_000); if (player.isPlaying) persist() }
+            while (true) { delay(3_000); if (player.isPlaying) persist(); scheduleRadio() }
+        }
+    }
+
+    private fun scheduleRadio() {
+        if(!networkPolicy.settings.autoplay || !player.playWhenReady || player.playerError != null || player.repeatMode != Player.REPEAT_MODE_OFF || radioJob?.isActive == true) return
+        if(android.os.SystemClock.elapsedRealtime() < radioRetryAt) return
+        val current = player.currentMediaItem?.let(TrackMediaCodec::track)?.takeIf { it.source == "youtube" } ?: return
+        val next = player.currentTimeline.getNextWindowIndex(player.currentMediaItemIndex, Player.REPEAT_MODE_OFF, player.shuffleModeEnabled)
+        if(next != C.INDEX_UNSET && player.currentTimeline.getNextWindowIndex(next, Player.REPEAT_MODE_OFF, player.shuffleModeEnabled) != C.INDEX_UNSET) return
+        val snapshot = (0 until player.mediaItemCount).map { player.getMediaItemAt(it).mediaId }
+        val tracks = (0 until player.mediaItemCount).mapNotNull { TrackMediaCodec.track(player.getMediaItemAt(it)) }
+        radioJob = scope.launch {
+            try {
+                delay(250)
+                networkPolicy.check()
+                val candidates = withTimeout(20_000) { sources.radio(current) }
+                val additions = withContext(Dispatchers.Default) { RadioPolicy.select(candidates, tracks) }
+                val unchanged = snapshot == (0 until player.mediaItemCount).map { player.getMediaItemAt(it).mediaId }
+                if(unchanged && networkPolicy.settings.autoplay && player.repeatMode == Player.REPEAT_MODE_OFF && additions.isNotEmpty()) {
+                    // Preserve user queues and never resurrect a cleared/replaced selection.
+                    player.addMediaItems(additions.map(TrackMediaCodec::item))
+                    if(player.playbackState == Player.STATE_ENDED && player.playWhenReady) {
+                        player.seekTo(snapshot.size, 0); player.prepare()
+                    }
+                    // Bound long sessions without discarding unplayed items or shuffle history.
+                    if(!player.shuffleModeEnabled && player.currentMediaItemIndex > 100) player.removeMediaItems(0, player.currentMediaItemIndex - 30)
+                } else radioRetryAt = android.os.SystemClock.elapsedRealtime() + 60_000
+            } catch(_: TimeoutCancellationException) { radioRetryAt = android.os.SystemClock.elapsedRealtime() + 60_000 }
+            catch(cancelled: CancellationException) { throw cancelled }
+            catch(_: Exception) { radioRetryAt = android.os.SystemClock.elapsedRealtime() + 60_000 }
         }
     }
 
