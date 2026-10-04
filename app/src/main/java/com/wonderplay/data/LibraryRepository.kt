@@ -33,6 +33,7 @@ class LibraryRepository(
             theme = runCatching { ThemeMode.valueOf(values[Keys.theme].orEmpty()) }.getOrDefault(ThemeMode.DARK),
             haptics = values[Keys.haptics] ?: true, reducedMotion = values[Keys.reducedMotion] ?: false,
             wifiOnly = values[Keys.wifiOnly] ?: false, highQuality = values[Keys.highQuality] ?: true,
+            audioQuality = values[Keys.audioQuality]?.let { runCatching { AudioQuality.valueOf(it) }.getOrNull() } ?: if(values[Keys.highQuality] == false) AudioQuality.MEDIUM else AudioQuality.HIGH,
             albumColors = true, autoplay = values[Keys.autoplay] ?: true,
             searchSource = runCatching { SearchSource.valueOf(values[Keys.searchSource].orEmpty()) }.getOrDefault(SearchSource.YOUTUBE),
         )
@@ -82,7 +83,7 @@ class LibraryRepository(
         preferences.edit { values ->
             values[Keys.theme] = value.theme.name; values[Keys.haptics] = value.haptics
             values[Keys.albumColors] = value.albumColors; values[Keys.searchSource] = value.searchSource.name
-            values[Keys.autoplay] = value.autoplay; values[Keys.reducedMotion] = value.reducedMotion; values[Keys.wifiOnly] = value.wifiOnly; values[Keys.highQuality] = value.highQuality
+            values[Keys.autoplay] = value.autoplay; values[Keys.reducedMotion] = value.reducedMotion; values[Keys.wifiOnly] = value.wifiOnly; values[Keys.highQuality] = value.audioQuality == AudioQuality.HIGH; values[Keys.audioQuality] = value.audioQuality.name
         }
     }
     override suspend fun saveQueue(tracks: List<Track>, index: Int, positionMs: Long) = database.withTransaction {
@@ -107,6 +108,6 @@ class LibraryRepository(
         val albumColors = booleanPreferencesKey("album_colors"); val searchSource = stringPreferencesKey("search_source")
         val searches = stringPreferencesKey("recent_searches"); val theme = stringPreferencesKey("theme")
         val haptics = booleanPreferencesKey("haptics"); val reducedMotion = booleanPreferencesKey("reduced_motion")
-        val wifiOnly = booleanPreferencesKey("wifi_only"); val highQuality = booleanPreferencesKey("high_quality")
+        val audioQuality = stringPreferencesKey("audio_quality"); val wifiOnly = booleanPreferencesKey("wifi_only"); val highQuality = booleanPreferencesKey("high_quality")
     }
 }

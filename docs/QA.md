@@ -76,3 +76,18 @@ Search tests cover official editorial IDs versus community/personal-mix IDs, fea
 An initial Android emulator run was aborted by a system crash. Verification was repeated in a fresh emulator session; the aborted run is not counted as passing.
 
 Playlist preloading uses Media3’s [PreloadConfiguration](https://developer.android.com/blog/posts/elevating-media-playback-introducing-preloading-with-media3-part-1): up to eight seconds of next-track media, once active playback loading allows it. Buffering stays transient and follows playback network restrictions.
+
+
+## 1.1.1 — 2026-10-04
+
+- Signed APK versionCode 9 / versionName 1.1.1. Same signing certificate as 1.1.0; installation over 1.1.0 passed. APK signature and ZIP alignment checks passed.
+- 65 unit tests; 17 Android regression tests. Debug and release lint passed. Existing playback, preloading, shuffle, lyrics, local player expansion and mini-player gestures remain covered.
+- New checks cover actual Low/Medium/High stream selection, unknown-bitrate fallback, legacy preference migration, persisted quality pills, linked collaborator names, album identity and duration, dialog dismissal, keyboard behavior during refresh, and reachability of lower options-sheet actions.
+- Anonymous live metadata probe: Jhoome Jo Pathaan returned four linked artists and Pathaan; The Weeknd returned ten ranked tracks and twenty official/artist-page playlists. A separate Arijit artist probe passed. Diagnostic network tests were removed before publication.
+- Signed UI spot checks passed for themed quality pills, unsupported download hiding, collaborator cards, Arijit's canonical top tracks, return to the picker, track details and linked albums. Artist and album screenshots accompany the source.
+- Signed licensed-download flow passed using Electric Mirrors / Neon Jesus Wins The World Cup. Completed download played offline and displayed its status icon directly below Like. The current-track menu suppresses Play next; local and unsupported tracks have no download control.
+- Focused review found and corrected incomplete collaborator merging. Signed UI verification found and corrected the partially expanded options sheet; it now opens fully and scrolls on smaller displays. Follow-up review found no important regressions.
+- Release optimizer needed 4 GiB with limited parallelism on this host. No build setting or dependency change was required in the repository.
+- Download eligibility remains limited to exact recordings with published matching licenses; the YouTube catalog and NCS creator policy do not imply standalone download permission.
+
+APK SHA-256: `1214ba55c3bfa4b9245360a9ed5fca3d88248e5ca4fe22c2940521973261de61` (3,972,764 bytes).

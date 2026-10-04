@@ -13,7 +13,7 @@
   <tr>
     <td><img src="docs/screenshots/home-recommendations-1.0.6.png" alt="Discover music on Home" width="280" /></td>
     <td><img src="docs/screenshots/floating-player-1.0.6.png" alt="Search and the floating player" width="280" /></td>
-    <td><img src="docs/screenshots/player-1.1.0.png" alt="Expanded music player" width="280" /></td>
+    <td><img src="docs/screenshots/artist-picker-1.1.1.png" alt="Explore every artist on a collaboration" width="280" /></td>
   </tr>
 </table>
 
@@ -24,9 +24,11 @@
 - **Stay with the lyrics.** Synced lines follow playback and open into a full-screen view.
 - **Keep music close.** Floating controls, swipe gestures and background playback.
 - **Take eligible music offline.** Private downloads, progress controls and a licensed-music browser in Library.
+- **Meet the artists.** Explore collaborators, live top tracks and artist playlists.
+- **Choose your sound.** Low, Medium and High streaming quality, with refreshable discovery.
 - **Make it yours.** Favorites, playlists and your own local music.
 
-[See private downloads in action](docs/screenshots/downloads-1.1.0.png)
+[See private downloads in action](docs/screenshots/downloads-1.1.1.png)
 
 ### Get wonderPlay
 

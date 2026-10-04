@@ -65,7 +65,7 @@ internal class PlaybackResolver(
     private val sources: SourceRegistry,
     private val policy: PlaybackNetworkPolicy,
 ) : ResolvingDataSource.Resolver {
-    private data class Cached(val source: PlaybackSource, val time: Long)
+    private data class Cached(val source: PlaybackSource, val time: Long, val quality: com.wonderplay.domain.AudioQuality)
     private val resolved = ConcurrentHashMap<String, Cached>()
 
     fun retain(ids: Set<String>) { resolved.keys.retainAll(ids); ResolutionState.retain(ids) }
@@ -81,7 +81,8 @@ internal class PlaybackResolver(
             val offline = runBlocking { sources.offlinePlayback(track) }
             if(offline != null) { ResolutionState.set(id, ResolutionInfo(quality=offline.qualityLabel)); return dataSpec.withUri(Uri.parse(offline.uri)) }
             if (track.source != "local") policy.check()
-            val cached = resolved[id]?.takeIf { android.os.SystemClock.elapsedRealtime() - it.time < 300_000L }
+            val quality = policy.settings.audioQuality
+            val cached = resolved[id]?.takeIf { it.quality == quality && android.os.SystemClock.elapsedRealtime() - it.time < 300_000L }
             if (cached != null) {
                 ResolutionState.set(id, ResolutionInfo(quality = cached.source.qualityLabel))
                 return dataSpec.withUri(Uri.parse(cached.source.uri))
@@ -89,9 +90,9 @@ internal class PlaybackResolver(
             ResolutionState.set(id, ResolutionInfo(resolving = true))
             // Media3 calls this on its loader thread. Cancelling a source interrupts this
             // thread and runBlocking cancels the provider coroutine before it can commit.
-            val source = runBlocking { withTimeout(25_000) { sources.resolvePlayback(track) } }
+            val source = runBlocking { withTimeout(25_000) { sources.resolvePlayback(track, quality) } }
             if (Thread.currentThread().isInterrupted) throw InterruptedException()
-            resolved[id] = Cached(source, android.os.SystemClock.elapsedRealtime())
+            resolved[id] = Cached(source, android.os.SystemClock.elapsedRealtime(), quality)
             ResolutionState.set(id, ResolutionInfo(quality = source.qualityLabel))
             return dataSpec.withUri(Uri.parse(source.uri))
         } catch (cancelled: InterruptedException) {

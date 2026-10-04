@@ -18,6 +18,7 @@ class LibraryRepositoryTest {
     private lateinit var db:LibraryDatabase
     private lateinit var repo:LibraryRepository
     private lateinit var scope:CoroutineScope
+    private lateinit var preferences:androidx.datastore.core.DataStore<androidx.datastore.preferences.core.Preferences>
     private val one=Track("local:one","One","Artist",source="local",streamUrl="content://test/one")
     private val two=one.copy(id="local:two",title="Two")
     @Before fun setup() {
@@ -25,6 +26,7 @@ class LibraryRepositoryTest {
         db=Room.inMemoryDatabaseBuilder(context,LibraryDatabase::class.java).allowMainThreadQueries().build()
         scope=CoroutineScope(SupervisorJob()+Dispatchers.IO)
         val store=PreferenceDataStoreFactory.create(scope=scope,produceFile={File(context.cacheDir,"${java.util.UUID.randomUUID()}.preferences_pb")})
+        preferences=store
         repo=LibraryRepository(context,db,store)
     }
     @After fun close(){scope.cancel();db.close()}
@@ -37,6 +39,21 @@ class LibraryRepositoryTest {
         repo.updateSettings(changed)
         assertEquals(changed,repo.settings.first())
         assertEquals(one,repo.favorites.first().single())
+    }
+    @Test fun qualityPersistsAndStructuredArtistsSurviveLibraryStorage()=runBlocking {
+        repo.updateSettings(repo.settings.first().copy(audioQuality=com.wonderplay.domain.AudioQuality.LOW))
+        assertEquals(com.wonderplay.domain.AudioQuality.LOW,repo.settings.first().audioQuality)
+        repo.updateSettings(repo.settings.first().copy(audioQuality=com.wonderplay.domain.AudioQuality.MEDIUM))
+        assertEquals(com.wonderplay.domain.AudioQuality.MEDIUM,repo.settings.first().audioQuality)
+        val track=one.copy(artists=listOf(com.wonderplay.domain.ArtistRef("UCband","Earth, Wind & Fire"),com.wonderplay.domain.ArtistRef("UCguest","Guest")))
+        repo.toggleFavorite(track)
+        assertEquals(track,repo.favorites.first().single())
+    }
+    @Test fun oldQualityPreferenceMigratesAndNewPreferenceWins()=runBlocking {
+        preferences.updateData {old->old.toMutablePreferences().apply {this[androidx.datastore.preferences.core.booleanPreferencesKey("high_quality")]=false}}
+        assertEquals(com.wonderplay.domain.AudioQuality.MEDIUM,repo.settings.first().audioQuality)
+        repo.updateSettings(repo.settings.first().copy(audioQuality=com.wonderplay.domain.AudioQuality.LOW))
+        assertEquals(com.wonderplay.domain.AudioQuality.LOW,repo.settings.first().audioQuality)
     }
     @Test fun rapidFavoriteTogglesAreSerialized()= runBlocking {
         coroutineScope { repeat(20){launch(Dispatchers.Default){repo.toggleFavorite(one)}} }

@@ -5,6 +5,7 @@ import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGestures
@@ -76,7 +77,7 @@ internal fun PlayerSurface(state:PlayerState,vm:AppViewModel,expanded:Boolean,on
                     }),description="Artwork for ${track.title}")
                 }
                 if(fraction<.5f) Row(Modifier.fillMaxSize().clickable(enabled=!expanded) { haptics.perform(HapticEvent.SELECT);onExpanded(true) }.padding(start=72.dp,end=8.dp).alpha(1-fraction*2),verticalAlignment=Alignment.CenterVertically) {
-                    Column(Modifier.weight(1f)) { Text(current.title,maxLines=1,overflow=TextOverflow.Ellipsis,style=MaterialTheme.typography.titleSmall); Text(current.artist,maxLines=1,overflow=TextOverflow.Ellipsis,color=MaterialTheme.colorScheme.onSurfaceVariant,style=MaterialTheme.typography.bodySmall) }
+                    Column(Modifier.weight(1f)) { Text(current.title,modifier=if(reduced) Modifier else Modifier.basicMarquee(iterations=Int.MAX_VALUE),maxLines=1,overflow=TextOverflow.Ellipsis,style=MaterialTheme.typography.titleSmall); Text(current.artist,modifier=if(reduced) Modifier else Modifier.basicMarquee(iterations=Int.MAX_VALUE),maxLines=1,overflow=TextOverflow.Ellipsis,color=MaterialTheme.colorScheme.onSurfaceVariant,style=MaterialTheme.typography.bodySmall) }
                     TactileIcon(if(state.isPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,if(state.isPlaying) "Pause" else "Play",vm.player::togglePlayPause)
                     TactileIcon(Icons.Rounded.SkipNext,"Next track",vm.player::next,enabled=state.queue.size>1,event=HapticEvent.SKIP)
                 }
@@ -92,9 +93,11 @@ internal fun PlayerSurface(state:PlayerState,vm:AppViewModel,expanded:Boolean,on
                                 Text(current.title,style=MaterialTheme.typography.headlineMedium,maxLines=2,overflow=TextOverflow.Ellipsis)
                                 Text(current.artist,style=MaterialTheme.typography.bodyLarge,color=MaterialTheme.colorScheme.onSurfaceVariant,modifier=Modifier.padding(top=5.dp))
                             }
-                            TactileIcon(if(favorite) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder,if(favorite) "Remove favorite" else "Favorite track",onFavorite,selected=favorite,event=HapticEvent.FAVORITE)
+                            Column(horizontalAlignment=Alignment.CenterHorizontally) {
+                                TactileIcon(if(favorite) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder,if(favorite) "Remove favorite" else "Favorite track",onFavorite,selected=favorite,event=HapticEvent.FAVORITE)
+                                DownloadAction(current,vm)
+                            }
                         }
-                        DownloadAction(current,vm)
                         Spacer(Modifier.height(14.dp))
                         var seeking by remember(current.id) { mutableStateOf(false) }; var seek by remember(current.id) { mutableFloatStateOf(0f) }
                         Slider(value=if(seeking) seek else state.positionMs.toFloat().coerceIn(0f,state.durationMs.coerceAtLeast(1).toFloat()),

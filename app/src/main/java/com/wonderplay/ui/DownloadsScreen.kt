@@ -18,11 +18,21 @@ import com.wonderplay.domain.Track
 @Composable
 internal fun DownloadAction(track:Track,vm:AppViewModel,menu:Boolean=false,onDone:()->Unit={}) {
  val entries by vm.downloads.collectAsStateWithLifecycle()
+ val eligibility by vm.downloadEligibility.collectAsStateWithLifecycle()
  val entry=entries.firstOrNull {it.id==track.id}
- val label=when {track.source=="local"->"On device";entry?.status=="Ready"->"Remove download";entry?.status in setOf("Queued","Preparing","Downloading")->"Cancel download";else->"Download"}
- val action={when(label) {"Remove download"->vm.removeDownload(track.id);"Cancel download"->vm.cancelDownload(track.id);else->vm.download(track)};onDone()}
- if(menu) ActionRow(Icons.Rounded.Download,label,if(track.source=="youtube") "Checks for a licensed matching recording" else null,action)
- else TextButton(onClick=action,enabled=track.source!="local") {Icon(if(entry?.status=="Ready") Icons.Rounded.OfflinePin else Icons.Rounded.Download,null);Spacer(Modifier.width(8.dp));Text(label)}
+ LaunchedEffect(track.id) {vm.checkDownload(track)}
+ val active=entry?.status in setOf("Queued","Preparing","Downloading")
+ if(track.source=="local" || (entry?.status!="Ready" && !active && eligibility[track.id]!=true)) return
+ val label=when {entry?.status=="Ready"->"Downloaded";active->"Cancel download";else->"Download"}
+ val action={when {entry?.status=="Ready"->if(menu) vm.removeDownload(track.id) else vm.showDownloadedStatus();active->vm.cancelDownload(track.id);else->vm.download(track)};onDone()}
+ if(menu) ActionRow(if(entry?.status=="Ready") Icons.Rounded.OfflinePin else Icons.Rounded.Download,if(entry?.status=="Ready") "Remove download" else label,onClick=action)
+ else Box(Modifier.size(48.dp),contentAlignment=androidx.compose.ui.Alignment.Center) {
+     IconButton(onClick=action) { Icon(when {entry?.status=="Ready"->Icons.Rounded.OfflinePin;active->Icons.Rounded.Close;else->Icons.Rounded.Download},label,tint=MaterialTheme.colorScheme.primary,modifier=Modifier.size(22.dp)) }
+     if(active) {
+         if(entry?.status=="Downloading" && entry.total>0) CircularProgressIndicator(progress={(entry.bytes.toFloat()/entry.total).coerceIn(0f,1f)},modifier=Modifier.size(38.dp),strokeWidth=2.dp)
+         else CircularProgressIndicator(modifier=Modifier.size(38.dp),strokeWidth=2.dp)
+     }
+ }
 }
 
 @Composable

@@ -42,6 +42,12 @@ class PlayerExpansionTest {
         compose.activityRule.scenario.recreate()
         compose.onNodeWithContentDescription("Close player").assertIsDisplayed()
         compose.onNodeWithContentDescription("Close player").performClick()
+        compose.onNodeWithContentDescription("Options for ${track.title}").performClick()
+        compose.onNodeWithText("Play next").assertDoesNotExist()
+        compose.onNodeWithText("Download").assertDoesNotExist()
+        compose.onNodeWithText("View artist").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Track details").performScrollTo().assertIsDisplayed()
+        compose.activity.onBackPressedDispatcher.onBackPressed()
         runBlocking { app.container.library.removeLocalTrack(track.id) }
     }
 }

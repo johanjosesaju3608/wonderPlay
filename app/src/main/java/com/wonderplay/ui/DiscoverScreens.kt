@@ -1,5 +1,6 @@
 package com.wonderplay.ui
 
+import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -13,6 +14,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -35,6 +37,7 @@ internal fun HomeScreen(vm: AppViewModel, history: List<Track>, favorites: List<
     onImport: () -> Unit, onSettings: () -> Unit, onLibrary: (String) -> Unit, onMenu: (Track) -> Unit, currentId: String?) {
     val home by vm.ui.collectAsStateWithLifecycle()
     LaunchedEffect(Unit) { vm.loadDiscovery() }
+    RefreshFrame(home.refreshingHome,vm::refreshHome,Modifier.fillMaxSize().testTag("Home refresh")) {
     LazyColumn(contentPadding = PaddingValues(bottom = 32.dp + LocalOverlayBottom.current)) {
         item {
             Row(Modifier.fillMaxWidth().padding(start = Space.page, end = 12.dp, top = 10.dp, bottom = 18.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -98,6 +101,7 @@ internal fun HomeScreen(vm: AppViewModel, history: List<Track>, favorites: List<
         if (local.isEmpty()) item { ActionRow(Icons.Rounded.FolderOpen, "Bring your own music", "Open audio files. Listen anywhere.", onImport) }
         else items(local.take(3), key = { "local:${it.id}" }) { track -> TrackRow(track, { vm.player.play(local, local.indexOf(track)) }, { onMenu(track) }, current = currentId == track.id) }
     }
+    }
 }
 
 @Composable
@@ -143,6 +147,7 @@ internal fun SearchScreen(vm: AppViewModel, query: String, tracks: List<Track>, 
         }
         if (searching) LinearProgressIndicator(Modifier.fillMaxWidth().height(2.dp).padding(horizontal = Space.page), color = MaterialTheme.colorScheme.primary, trackColor = MaterialTheme.colorScheme.surface)
         else Spacer(Modifier.height(2.dp))
+        RefreshFrame(searchUi.refreshingSearch,vm::refreshSearch,Modifier.weight(1f).testTag("Search refresh")) {
         LazyColumn(contentPadding = PaddingValues(bottom = 24.dp + LocalOverlayBottom.current)) {
             if (query.isBlank()) {
                 if (recent.isNotEmpty()) {
@@ -150,7 +155,7 @@ internal fun SearchScreen(vm: AppViewModel, query: String, tracks: List<Track>, 
                     item {
                         LazyRow(contentPadding = PaddingValues(horizontal = Space.page), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             items(recent, key = { it }) { term ->
-                                SuggestionChip(modifier = Modifier.widthIn(max = 220.dp), onClick = { keyboard?.hide(); focusManager.clearFocus(); vm.search(term) }, label = { Text(term, maxLines = 1) }, shape = androidx.compose.foundation.shape.CircleShape)
+                                SuggestionChip(modifier = Modifier.widthIn(max = 220.dp), onClick = { keyboard?.hide(); focusManager.clearFocus(); vm.search(term) }, label = { Text(term, modifier=if(LocalReducedMotion.current) Modifier else Modifier.basicMarquee(iterations=Int.MAX_VALUE), maxLines = 1) }, shape = androidx.compose.foundation.shape.CircleShape)
                             }
                         }
                     }
@@ -164,7 +169,7 @@ internal fun SearchScreen(vm: AppViewModel, query: String, tracks: List<Track>, 
                             Surface(onClick = { keyboard?.hide(); focusManager.clearFocus(); vm.openPlaylist(list) }, modifier = Modifier.weight(1f), shape = Shape.artwork, color = MaterialTheme.colorScheme.surfaceContainerHigh) {
                                 Column(Modifier.padding(12.dp)) {
                                     Artwork(Track("chart:${list.id}", list.title, "YouTube Music", artworkUrl = list.artworkUrl), Modifier.fillMaxWidth().aspectRatio(1.6f).clip(Shape.control), "Open ${list.title}")
-                                    Text(list.title, Modifier.padding(top = 10.dp).heightIn(min = 40.dp), style = MaterialTheme.typography.titleSmall, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                                    Text(list.title, Modifier.padding(top = 10.dp).heightIn(min = 40.dp).then(if(LocalReducedMotion.current) Modifier else Modifier.basicMarquee(iterations=Int.MAX_VALUE)), style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
                                 }
                             }
                         }
@@ -176,7 +181,7 @@ internal fun SearchScreen(vm: AppViewModel, query: String, tracks: List<Track>, 
                 if(searchUi.recommendationsLoading) item { LinearProgressIndicator(Modifier.fillMaxWidth().padding(Space.page)) }
                 searchUi.recommendationsError?.let { message -> item { FailureState(message, { vm.loadDiscovery(true) }) } }
                 items(searchUi.recommendations, key = { "recommendation:${it.id}" }) { track ->
-                    TrackRow(track, { vm.player.play(searchUi.recommendations, searchUi.recommendations.indexOf(track)) }, { onMenu(track) }, current = track.id == currentId, favorite = favorites.any { it.id == track.id })
+                    TrackRow(track, { vm.player.play(searchUi.recommendations, searchUi.recommendations.indexOf(track)) }, { onMenu(track) }, current = track.id == currentId, favorite = favorites.any { it.id == track.id }, scrollingTitle = true)
                 }
             } else {
                 if (searchUi.searchCollections.isNotEmpty()) {
@@ -186,7 +191,7 @@ internal fun SearchScreen(vm: AppViewModel, query: String, tracks: List<Track>, 
                             items(searchUi.searchCollections, key = { it.id }) { list ->
                                 Column(Modifier.width(160.dp).clickable { keyboard?.hide(); focusManager.clearFocus(); vm.openPlaylist(list) }) {
                                     Artwork(Track("collection:${list.id}", list.title, list.subtitle, artworkUrl = list.artworkUrl), Modifier.size(160.dp).clip(Shape.artwork), "Open ${list.title}")
-                                    Text(list.title, Modifier.padding(top = 8.dp), style = MaterialTheme.typography.titleSmall, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                                    Text(list.title, Modifier.padding(top = 8.dp).then(if(LocalReducedMotion.current) Modifier else Modifier.basicMarquee(iterations=Int.MAX_VALUE)), style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
                                     Text(list.subtitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2, overflow = TextOverflow.Ellipsis)
                                 }
                             }
@@ -200,7 +205,7 @@ internal fun SearchScreen(vm: AppViewModel, query: String, tracks: List<Track>, 
                         color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(horizontal = Space.page, vertical = 20.dp)) }
                     items(tracks, key = { it.id }) { track -> TrackRow(track,
                         { keyboard?.hide(); focusManager.clearFocus(); vm.player.play(tracks, tracks.indexOf(track)) }, { keyboard?.hide(); onMenu(track) },
-                        current = track.id == currentId, favorite = favorites.any { it.id == track.id }) }
+                        current = track.id == currentId, favorite = favorites.any { it.id == track.id }, scrollingTitle = true) }
                 }
                 if (error != null) item { FailureState(error, vm::retrySearch) }
                 else if (!searching && !searchUi.collectionsLoading && tracks.isEmpty() && searchUi.searchCollections.isEmpty()) item { EmptyState("A different kind of discovery", "No playable tracks matched “${query.trim()}”. Try an artist, track title, or genre.", Icons.Rounded.SearchOff) }
@@ -217,5 +222,6 @@ internal fun SearchScreen(vm: AppViewModel, query: String, tracks: List<Track>, 
                 }
             }
         }
+    }
     }
 }

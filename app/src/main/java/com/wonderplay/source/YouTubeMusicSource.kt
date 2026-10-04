@@ -77,9 +77,10 @@ class YouTubeMusicSource : MusicSource {
             artworkUrl = info.thumbnails.maxByOrNull { it.width }?.url, durationMs = info.duration.coerceAtLeast(0) * 1000,
             source = this.id, sourceId = clean, permalink = "https://music.youtube.com/watch?v=$clean"))
     }
-    override suspend fun resolvePlayback(track: Track): PlaybackSource = extract {
+    override suspend fun resolvePlayback(track: Track): PlaybackSource = resolvePlayback(track, AudioQuality.HIGH)
+    suspend fun resolvePlayback(track: Track, quality: AudioQuality): PlaybackSource = extract {
         val info = StreamInfo.getInfo(ServiceList.YouTube, "https://www.youtube.com/watch?v=${validId(track.sourceId)}")
-        publicPlayback(info.audioStreams, info.videoStreams)
+        publicPlayback(info.audioStreams, info.videoStreams, quality)
     }
     override suspend fun getArtist(id: String): Artist = Artist(id, id, tracks = search(id).tracks)
     override suspend fun getAlbum(id: String): MusicCollection = MusicCollection(id, id, tracks = search(id).tracks)
@@ -96,9 +97,11 @@ class YouTubeMusicSource : MusicSource {
         catch (error: Exception) { throw SourceException("YouTube Music could not provide this request. Try again or choose another track.", error) }
 
     companion object {
-        internal fun publicPlayback(audioStreams: List<AudioStream>, videoStreams: List<VideoStream>): PlaybackSource {
-            val audio = audioStreams.filter { it.isUrl && it.content.startsWith("https://") }.maxByOrNull { it.averageBitrate }
-            if(audio != null) return PlaybackSource(audio.content, audio.format?.mimeType, "${audio.averageBitrate.coerceAtLeast(0)} kbps · ${audio.format?.name ?: "Audio"}")
+        internal fun publicPlayback(audioStreams: List<AudioStream>, videoStreams: List<VideoStream>, quality: AudioQuality = AudioQuality.HIGH): PlaybackSource {
+            val available = audioStreams.filter { it.isUrl && it.content.startsWith("https://") }
+            val known = available.filter {it.averageBitrate > 0}
+            val audio = known.filter { it.averageBitrate <= quality.ceilingKbps }.maxByOrNull { it.averageBitrate } ?: known.minByOrNull { it.averageBitrate } ?: available.firstOrNull()
+            if(audio != null) return PlaybackSource(audio.content, audio.format?.mimeType, if(audio.averageBitrate>0) "${audio.averageBitrate} kbps · ${audio.format?.name ?: "Audio"}" else "Source audio · ${audio.format?.name ?: "Audio"}")
             // Some public videos expose muxed audio/video but no separate audio stream.
             // Use the smallest such stream with video decoding disabled by the service.
             val muxed = videoStreams.filter { !it.isVideoOnly && it.isUrl && it.content.startsWith("https://") }

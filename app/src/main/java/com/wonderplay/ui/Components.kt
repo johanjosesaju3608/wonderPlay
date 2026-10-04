@@ -1,5 +1,6 @@
 package com.wonderplay.ui
 
+import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
@@ -58,7 +59,7 @@ internal fun SectionHeading(title: String, subtitle: String? = null, action: Str
 
 @Composable
 internal fun TrackRow(track: Track, onPlay: () -> Unit, onMenu: () -> Unit, modifier: Modifier = Modifier,
-    current: Boolean = false, favorite: Boolean = false, trailing: @Composable (() -> Unit)? = null, number: Int? = null) {
+    current: Boolean = false, favorite: Boolean = false, trailing: @Composable (() -> Unit)? = null, number: Int? = null, scrollingTitle: Boolean = false) {
     val haptics = LocalWonderHaptics.current
     Row(modifier.fillMaxWidth().heightIn(min = 76.dp).combinedClickable(
         role = Role.Button, onClickLabel = "Play ${track.title}", onLongClickLabel = "Track options",
@@ -70,13 +71,13 @@ internal fun TrackRow(track: Track, onPlay: () -> Unit, onMenu: () -> Unit, modi
             modifier = Modifier.width(28.dp))
         Artwork(track, Modifier.size(52.dp))
         Column(Modifier.weight(1f).padding(start = 14.dp, end = 4.dp)) {
-            Text(track.title, maxLines = 1, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.titleMedium,
+            Text(track.title, modifier = if(scrollingTitle && !LocalReducedMotion.current) Modifier.basicMarquee(iterations=Int.MAX_VALUE) else Modifier, maxLines = 1, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.titleMedium,
                 color = if (current) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface)
             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 3.dp)) {
                 if (current) { Icon(Icons.Rounded.Equalizer, "Current track", tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(13.dp)); Spacer(Modifier.width(4.dp)) }
                 if (track.explicit) { Text("E", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant); Spacer(Modifier.width(5.dp)) }
                 Text(track.artist, maxLines = 1, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.weight(1f, false))
+                    color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.weight(1f, false).then(if(scrollingTitle && !LocalReducedMotion.current) Modifier.basicMarquee(iterations=Int.MAX_VALUE) else Modifier))
                 if (favorite) { Spacer(Modifier.width(6.dp)); Icon(Icons.Rounded.Favorite, "Favorite", modifier = Modifier.size(12.dp), tint = MaterialTheme.colorScheme.primary) }
             }
         }

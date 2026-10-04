@@ -33,6 +33,10 @@ data class UiState(
     val collection: MusicCollection? = null,
     val artist: Artist? = null,
     val detailLoading: Boolean = false,
+    val artistPicker: List<ArtistRef> = emptyList(),
+    val trackDetails: TrackDetails? = null,
+    val refreshingHome: Boolean = false,
+    val refreshingSearch: Boolean = false,
     val featured: List<MusicCollection> = emptyList(),
     val featuredLoading: Boolean = false,
     val featuredError: String? = null,
@@ -74,9 +78,15 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     private var recommendationsJob: Job? = null
     private var lyricsJob: Job? = null
     private var featuredJob: Job? = null
+    private var featuredSignature: String? = null
+    val downloadEligibility = MutableStateFlow<Map<String,Boolean>>(emptyMap())
+    private val eligibilityTimes = mutableMapOf<String,Long>()
+    private val eligibilityJobs = mutableSetOf<String>()
+    private val eligibilitySlots = kotlinx.coroutines.sync.Semaphore(2)
     private var collectionSearchJob: Job? = null
     private var searchJob: Job? = null
     private var detailJob: Job? = null
+    private val detailStack = java.util.ArrayDeque<UiState>()
     private var searchGeneration = 0
     private var remoteOffset = 0
 
@@ -86,6 +96,8 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             combine(history, favorites) { h, f -> h to f }.collect { (h, f) ->
                 if (discoveryRequested) loadRecommendations(h, f)
+                val signature=Recommendations.seeds(h,f).joinToString {it.artist}
+                if(signature!=featuredSignature) loadFeatured()
             }
         }
         viewModelScope.launch {
@@ -121,7 +133,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         discoverySignature = signature
         recommendationsJob?.cancel()
         val seeds = Recommendations.seeds(h, f)
-        mutableUi.update { it.copy(recommendations = emptyList(), recommendationsLoading = true, recommendationsError = null, personalized = seeds.isNotEmpty()) }
+        mutableUi.update { it.copy(recommendationsLoading = true, recommendationsError = null, personalized = seeds.isNotEmpty()) }
         recommendationsJob = viewModelScope.launch {
             try {
                 val candidates = kotlinx.coroutines.coroutineScope {
@@ -153,17 +165,20 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     }
     fun loadFeatured() {
         if(!com.wonderplay.source.connected(getApplication())) return
-        if (featuredJob?.isActive == true) return
+        featuredJob?.cancel()
+        val seeds=Recommendations.seeds(history.value,favorites.value)
+        featuredSignature=seeds.joinToString {it.artist}
         mutableUi.update { it.copy(featuredLoading = true, featuredError = null) }
         featuredJob = viewModelScope.launch {
-            try { val lists = sources.featuredPlaylists(); mutableUi.update { it.copy(featured = lists, featuredLoading = false) } }
+            try { val lists = sources.featuredPlaylists(seeds.map {it.artist}); mutableUi.update { it.copy(featured = lists, featuredLoading = false) } }
             catch (cancelled: CancellationException) { throw cancelled }
             catch (_: Exception) { mutableUi.update { it.copy(featuredLoading = false, featuredError = "Couldn't load featured playlists. Check your connection and retry.") } }
         }
     }
     fun openPlaylist(list: MusicCollection) {
+        rememberDetail()
         detailJob?.cancel()
-        mutableUi.update { it.copy(collection = null, artist = null, detailLoading = true) }
+        mutableUi.update { it.copy(collection = null, artist = null, artistPicker=emptyList(),trackDetails=null, detailLoading = true) }
         detailJob = viewModelScope.launch {
             try { val full = sources.getPlaylist(list.id); mutableUi.update { it.copy(collection = full.copy(title = list.title, subtitle = list.subtitle + if(full.subtitle.startsWith("First ")) " · ${full.subtitle}" else "", artworkUrl = full.artworkUrl ?: list.artworkUrl), detailLoading = false) } }
             catch (cancelled: CancellationException) { throw cancelled }
@@ -171,12 +186,13 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    fun search(query: String) {
+    fun search(query: String) { search(query,false) }
+    private fun search(query: String, refreshing: Boolean) {
         searchJob?.cancel()
         collectionSearchJob?.cancel()
         val generation = ++searchGeneration
         remoteOffset = 0
-        mutableUi.update { it.copy(query = query, searchTracks = emptyList(), searchCollections = emptyList(), collectionsLoading = query.isNotBlank(), collectionsError = null, searching = query.isNotBlank(), searchError = null, hasMore = false) }
+        mutableUi.update { it.copy(query = query, searchTracks = if(refreshing) it.searchTracks else emptyList(), searchCollections = if(refreshing) it.searchCollections else emptyList(), collectionsLoading = query.isNotBlank(), collectionsError = null, searching = query.isNotBlank(), searchError = null, hasMore = false, refreshingSearch = refreshing) }
         if (query.isBlank()) return
         collectionSearchJob = viewModelScope.launch {
             delay(400)
@@ -194,6 +210,38 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun retrySearch() { search(mutableUi.value.query) }
+    fun refreshHome() {
+        if(mutableUi.value.refreshingHome) return
+        if(!com.wonderplay.source.connected(getApplication())) {message("Connect to the internet to refresh music.");return}
+        mutableUi.update {it.copy(refreshingHome=true)}
+        loadDiscovery(true);loadFeatured()
+        viewModelScope.launch {try {listOfNotNull(chartsJob,recommendationsJob,featuredJob).forEach {it.join()}} finally {mutableUi.update {it.copy(refreshingHome=false)}}}
+    }
+    fun refreshSearch() {
+        if(mutableUi.value.refreshingSearch) return
+        if(!com.wonderplay.source.connected(getApplication())) {message("Connect to the internet to refresh music.");return}
+        if(mutableUi.value.query.isNotBlank()) search(mutableUi.value.query,true)
+        else { mutableUi.update {it.copy(refreshingSearch=true)};loadDiscovery(true) }
+        viewModelScope.launch {try {listOfNotNull(if(mutableUi.value.query.isBlank()) chartsJob else searchJob,if(mutableUi.value.query.isBlank()) recommendationsJob else collectionSearchJob).forEach {it.join()}} finally {mutableUi.update {it.copy(refreshingSearch=false)}}}
+    }
+    fun checkDownload(track:Track) {
+        if(track.source=="local" || track.id in eligibilityJobs) return
+        if(downloads.value.any {it.id==track.id && it.status in setOf("Ready","Queued","Preparing","Downloading")}) return
+        val now=android.os.SystemClock.elapsedRealtime()
+        if(now-(eligibilityTimes[track.id] ?: -600001L)<600000) return
+        if(!com.wonderplay.source.connected(getApplication())) return
+        eligibilityJobs.add(track.id)
+        viewModelScope.launch {
+            try {
+                eligibilitySlots.acquire()
+                try { val permit=withTimeout(90000) {com.wonderplay.download.PermittedAudioSource().find(track)}
+                    downloadEligibility.update {it+(track.id to (permit!=null))};eligibilityTimes[track.id]=android.os.SystemClock.elapsedRealtime()
+                } finally {eligibilitySlots.release()}
+            } catch(cancelled:CancellationException) {throw cancelled}
+            catch(_:Exception) { /* A network failure is not evidence that a recording is unsupported. */ }
+            finally {eligibilityJobs.remove(track.id)}
+        }
+    }
 
     fun loadMore() {
         val current = mutableUi.value
@@ -230,6 +278,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         if(track.source=="local") {message("This track is already on your device.");return@mutate}
         container.downloads.enqueue(track);message("Checking download availability. View progress in Library → Downloads.")
     }
+    fun showDownloadedStatus() {message("Downloaded · available offline")}
     fun cancelDownload(id:String) = mutate {container.downloads.cancel(id)}
     fun removeDownload(id:String) = mutate {
         if(player.state.value.current?.id==id) {message("Clear the current player before removing this download.");return@mutate}
@@ -240,7 +289,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         licensedJob?.cancel()
         licensedJob=viewModelScope.launch {
             licensedLoading.value=true;licensedError.value=null
-            try { licensedMusic.value=withTimeout(90000) {com.wonderplay.download.PermittedAudioSource().search(query)} }
+            try { licensedMusic.value=withTimeout(90000) {com.wonderplay.download.PermittedAudioSource().search(query)};downloadEligibility.update {it+licensedMusic.value.associate {permit->permit.track.id to true}};licensedMusic.value.forEach {eligibilityTimes[it.track.id]=android.os.SystemClock.elapsedRealtime()} }
             catch(cancelled:CancellationException) {throw cancelled}
             catch(_:Exception) {licensedError.value="Couldn't load music available for download. Try again."}
             finally {licensedLoading.value=false}
@@ -284,23 +333,32 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun openArtist(track: Track) {
-        detailJob?.cancel()
-        mutableUi.update { it.copy(collection = null, artist = null, detailLoading = true) }
-        detailJob = viewModelScope.launch {
+        detailStack.clear();detailJob?.cancel();clearDetails(true)
+        detailJob=viewModelScope.launch {
             try {
-                val artist = sources.getArtist(track)
-                mutableUi.update { it.copy(artist = artist, detailLoading = false) }
-            } catch (cancelled: CancellationException) { throw cancelled }
-            catch (error: Exception) {
-                debugLog("Artist unavailable", error)
-                mutableUi.update { it.copy(detailLoading = false, message = error.userMessage("Couldn’t open this artist. Try again.")) }
-            }
+                val details=sources.trackDetails(track)
+                if(details.artists.size>1) mutableUi.update {it.copy(artistPicker=details.artists,detailLoading=false)}
+                else { val artist=details.artists.firstOrNull()?.let {sources.artist(it)} ?: sources.getArtist(track);mutableUi.update {it.copy(artist=artist,detailLoading=false)} }
+            } catch(cancelled:CancellationException) {throw cancelled}
+            catch(_:Exception) {mutableUi.update {it.copy(detailLoading=false,message="Couldn't open artist details. Try again.")}}
         }
     }
+    fun openArtist(ref:ArtistRef) {
+        rememberDetail()
+        detailJob?.cancel();clearDetails(true)
+        detailJob=viewModelScope.launch {try {val artist=sources.artist(ref);mutableUi.update {it.copy(artist=artist,detailLoading=false)}} catch(cancelled:CancellationException) {throw cancelled} catch(_:Exception) {mutableUi.update {it.copy(detailLoading=false,message="Couldn't open this artist. Try again.")}}}
+    }
+    fun openTrackDetails(track:Track) {
+        detailStack.clear();detailJob?.cancel();clearDetails(true)
+        detailJob=viewModelScope.launch {try {val details=sources.trackDetails(track);mutableUi.update {it.copy(trackDetails=details,detailLoading=false)}} catch(cancelled:CancellationException) {throw cancelled} catch(_:Exception) {mutableUi.update {it.copy(trackDetails=TrackDetails(track,track.artists,emptyList()),detailLoading=false,message="Some music details are unavailable. Try again later.")}}}
+    }
+    private fun rememberDetail() { val current=mutableUi.value;if(current.artist!=null || current.artistPicker.isNotEmpty() || current.trackDetails!=null) detailStack.addLast(current) }
+    private fun clearDetails(loading:Boolean=false) {mutableUi.update {it.copy(collection=null,artist=null,artistPicker=emptyList(),trackDetails=null,detailLoading=loading)}}
 
     fun openAlbum(track: Track) {
+        rememberDetail()
         detailJob?.cancel()
-        mutableUi.update { it.copy(collection = null, artist = null, detailLoading = true) }
+        mutableUi.update { it.copy(collection = null, artist = null, artistPicker=emptyList(),trackDetails=null, detailLoading = true) }
         detailJob = viewModelScope.launch {
             try {
                 val album = sources.getAlbum(track)
@@ -315,8 +373,12 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
 
     fun closeDetail() {
         detailJob?.cancel()
-        mutableUi.update { it.copy(collection = null, artist = null, detailLoading = false) }
+        if(detailStack.isEmpty()) clearDetails() else {
+            val old=detailStack.removeLast()
+            mutableUi.update {it.copy(collection=old.collection,artist=old.artist,artistPicker=old.artistPicker,trackDetails=old.trackDetails,detailLoading=false)}
+        }
     }
+    fun closeAllDetails() {detailJob?.cancel();detailStack.clear();clearDetails()}
     fun updateSettings(value: AppSettings) = mutate { library.updateSettings(value) }
     fun clearHistory() = mutate { library.clearHistory(); message("Listening history cleared") }
     fun clearSearches() = mutate { library.clearSearches() }

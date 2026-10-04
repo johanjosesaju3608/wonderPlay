@@ -9,6 +9,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -25,7 +27,7 @@ internal fun SettingsScreen(settings:AppSettings,vm:AppViewModel,onBack:()->Unit
     var clearHistory by remember { mutableStateOf(false) }
     Column {
         ScreenHeader("Settings","A little more your own.",onBack)
-        LazyColumn(contentPadding=PaddingValues(bottom=24.dp + LocalOverlayBottom.current)) {
+        LazyColumn(modifier=Modifier.testTag("Settings list"),contentPadding=PaddingValues(bottom=24.dp + LocalOverlayBottom.current)) {
             item { SectionHeading("Appearance") }
             item { Row(Modifier.fillMaxWidth().padding(horizontal=24.dp),horizontalArrangement=Arrangement.spacedBy(8.dp)) {
                 ThemeMode.entries.forEach { theme -> FilterChip(settings.theme==theme,{vm.updateSettings(settings.copy(theme=theme))},label={Text(theme.name.lowercase().replaceFirstChar(Char::uppercaseChar))},modifier=Modifier.weight(1f).heightIn(min=48.dp),shape=Shape.control) }
@@ -36,7 +38,10 @@ internal fun SettingsScreen(settings:AppSettings,vm:AppViewModel,onBack:()->Unit
             item { Spacer(Modifier.height(16.dp));SectionHeading("Listening") }
             item { SettingSwitch("Wi-Fi-only streaming","Local files still work offline. Search and artwork may use mobile data.",settings.wifiOnly) {vm.updateSettings(settings.copy(wifiOnly=it))} }
             item { SettingSwitch("Autoplay similar songs","Continue with related music when the queue runs low",settings.autoplay) {vm.updateSettings(settings.copy(autoplay=it))} }
-            item { Information("Audio quality","The original available stream, without re-encoding. Audio quality depends on the source; wonderPlay does not claim lossless streaming.") }
+            item { Information("Audio quality","Control streaming data use. Low aims for 64 kbps, Medium for 128 kbps, and High uses the best available audio. Sources with one format keep their original quality. Applies to newly loaded streams.") }
+            item { Row(Modifier.fillMaxWidth().padding(horizontal=24.dp),horizontalArrangement=Arrangement.spacedBy(8.dp)) {
+                AudioQuality.entries.forEach { quality -> FilterChip(selected=settings.audioQuality==quality,onClick={vm.updateSettings(settings.copy(audioQuality=quality))},colors=FilterChipDefaults.filterChipColors(selectedContainerColor=MaterialTheme.colorScheme.primaryContainer,selectedLabelColor=MaterialTheme.colorScheme.onPrimaryContainer),label={Text(quality.name.lowercase().replaceFirstChar(Char::uppercaseChar))},shape=androidx.compose.foundation.shape.CircleShape,modifier=Modifier.weight(1f)) }
+            } }
             item { Spacer(Modifier.height(16.dp));SectionHeading("On this device") }
             item { ActionRow(Icons.Rounded.History,"Clear listening history") {clearHistory=true} }
             item { ActionRow(Icons.Rounded.Search,"Clear recent searches") {vm.clearSearches()} }
@@ -58,7 +63,7 @@ internal fun SettingsScreen(settings:AppSettings,vm:AppViewModel,onBack:()->Unit
                 else -> withContext(Dispatchers.IO) { listOf("THIRD-PARTY-NOTICES.txt","wonderPlay-MIT.txt","Apache-2.0.txt","GPL-3.0.txt").joinToString("\n\n") { name -> context.assets.open("licenses/$name").bufferedReader().use {it.readText()} } }
             }
         }
-        AlertDialog(onDismissRequest={info=null},title={Text(title)},text={Text(text,modifier=Modifier.heightIn(max=440.dp).verticalScroll(rememberScrollState()),style=MaterialTheme.typography.bodySmall)},confirmButton={TextButton(onClick={info=null}){Text("Done")}})
+        if(text.isNotBlank()) InformationDialog(title,text,settings.reducedMotion) {info=null}
     }
 }
 @Composable
@@ -70,3 +75,20 @@ private fun SettingSwitch(title:String,subtitle:String,checked:Boolean,onChange:
 }
 @Composable
 private fun Information(title:String,body:String) { Column(Modifier.padding(horizontal=24.dp,vertical=14.dp)) {Text(title,style=MaterialTheme.typography.titleSmall);Text(body,style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant,modifier=Modifier.padding(top=6.dp))} }
+
+@Composable
+private fun InformationDialog(title:String,text:String,reduced:Boolean,onDismiss:()->Unit) {
+    var entered by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) {entered=true}
+    val alpha by androidx.compose.animation.core.animateFloatAsState(if(entered) 1f else 0f,androidx.compose.animation.core.tween(if(reduced) 0 else 150),label="Information fade")
+    val scale by androidx.compose.animation.core.animateFloatAsState(if(entered) 1f else .97f,androidx.compose.animation.core.tween(if(reduced) 0 else 150),label="Information scale")
+    androidx.compose.ui.window.Dialog(onDismissRequest=onDismiss) {
+        Surface(shape=Shape.artwork,color=MaterialTheme.colorScheme.surfaceContainerHigh,modifier=Modifier.fillMaxWidth().graphicsLayer {this.alpha=alpha;scaleX=scale;scaleY=scale}) {
+            Column(Modifier.padding(24.dp)) {
+                Text(title,style=MaterialTheme.typography.headlineSmall)
+                Text(text,modifier=Modifier.padding(top=16.dp).heightIn(max=440.dp).verticalScroll(rememberScrollState()),style=MaterialTheme.typography.bodySmall)
+                TextButton(onClick=onDismiss,modifier=Modifier.align(Alignment.End).padding(top=12.dp)) {Text("Done")}
+            }
+        }
+    }
+}

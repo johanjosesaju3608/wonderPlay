@@ -18,10 +18,13 @@ data class Track(
     val genre: String? = null,
     val explicit: Boolean = false,
     val permalink: String? = null,
+    val artists: List<ArtistRef> = emptyList(),
 )
 
+data class ArtistRef(val id: String, val name: String, val artworkUrl: String? = null)
+data class TrackDetails(val track: Track, val artists: List<ArtistRef>, val albums: List<MusicCollection>)
 data class MusicCollection(val id: String, val title: String, val subtitle: String = "", val artworkUrl: String? = null, val tracks: List<Track> = emptyList(), val year: String? = null)
-data class Artist(val id: String, val name: String, val artworkUrl: String? = null, val tracks: List<Track> = emptyList(), val albums: List<MusicCollection> = emptyList())
+data class Artist(val id: String, val name: String, val artworkUrl: String? = null, val tracks: List<Track> = emptyList(), val albums: List<MusicCollection> = emptyList(), val playlists: List<MusicCollection> = emptyList())
 data class Playlist(val id: Long, val name: String, val tracks: List<Track> = emptyList())
 data class SearchResult(val tracks: List<Track>, val hasMore: Boolean = false)
 data class PlaybackSource(val uri: String, val mimeType: String? = null, val qualityLabel: String = "Source quality")
@@ -39,7 +42,8 @@ interface MusicSource {
 
 enum class ThemeMode { DARK, LIGHT, SYSTEM }
 enum class SearchSource { YOUTUBE }
-data class AppSettings(val theme: ThemeMode = ThemeMode.DARK, val haptics: Boolean = true, val reducedMotion: Boolean = false, val wifiOnly: Boolean = false, val highQuality: Boolean = true, val albumColors: Boolean = true, val searchSource: SearchSource = SearchSource.YOUTUBE, val autoplay: Boolean = true)
+enum class AudioQuality(val ceilingKbps: Int) { LOW(64), MEDIUM(128), HIGH(Int.MAX_VALUE) }
+data class AppSettings(val theme: ThemeMode = ThemeMode.DARK, val haptics: Boolean = true, val reducedMotion: Boolean = false, val wifiOnly: Boolean = false, val highQuality: Boolean = true, val albumColors: Boolean = true, val searchSource: SearchSource = SearchSource.YOUTUBE, val autoplay: Boolean = true, val audioQuality: AudioQuality = AudioQuality.HIGH)
 interface LibraryStore {
     val favorites: Flow<List<Track>>
     val history: Flow<List<Track>>

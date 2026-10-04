@@ -146,8 +146,8 @@ class PlaybackService : MediaSessionService() {
                 // Adaptive providers can offer alternatives. Fixed MP3 sources keep their
                 // actual source representation; the UI never promises invented fidelity.
                 player.trackSelectionParameters = player.trackSelectionParameters.buildUpon()
-                    .setMaxAudioBitrate(if (settings.highQuality) Int.MAX_VALUE else 160_000)
-                    .setForceHighestSupportedBitrate(settings.highQuality).build()
+                    .setMaxAudioBitrate(if (settings.audioQuality == com.wonderplay.domain.AudioQuality.HIGH) Int.MAX_VALUE else settings.audioQuality.ceilingKbps * 1000)
+                    .setForceHighestSupportedBitrate(settings.audioQuality == com.wonderplay.domain.AudioQuality.HIGH).build()
             }
         }
         scope.launch {

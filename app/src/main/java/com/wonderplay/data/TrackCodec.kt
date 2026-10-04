@@ -13,6 +13,7 @@ internal object TrackCodec {
         put("artistId", track.artistId); put("albumId", track.albumId)
         put("year", track.year); put("genre", track.genre)
         put("explicit", track.explicit); put("permalink", track.permalink)
+        put("artists", org.json.JSONArray().apply { track.artists.forEach { put(JSONObject().put("id",it.id).put("name",it.name).put("artworkUrl",it.artworkUrl)) } })
     }.toString()
 
     fun decode(value: String): Track = JSONObject(value).let { json ->
@@ -25,6 +26,7 @@ internal object TrackCodec {
             streamUrl = optional("streamUrl"), artistId = optional("artistId"), albumId = optional("albumId"),
             year = optional("year"), genre = optional("genre"), explicit = json.optBoolean("explicit"),
             permalink = optional("permalink"),
+            artists = json.optJSONArray("artists")?.let { a -> (0 until a.length()).mapNotNull { i -> a.optJSONObject(i)?.let { com.wonderplay.domain.ArtistRef(it.optString("id"),it.optString("name"),it.optString("artworkUrl").takeIf { url -> url.startsWith("https://") }) } } }.orEmpty(),
         )
     }
 }
