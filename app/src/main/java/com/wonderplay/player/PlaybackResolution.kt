@@ -78,6 +78,8 @@ internal class PlaybackResolver(
             TrackMediaCodec.decode(dataSpec.uri.getQueryParameter("metadata") ?: throw IOException("Missing track metadata"))
         } catch (error: Exception) { throw IOException("The saved track is invalid. Search for it again.", error) }
         try {
+            val offline = runBlocking { sources.offlinePlayback(track) }
+            if(offline != null) { ResolutionState.set(id, ResolutionInfo(quality=offline.qualityLabel)); return dataSpec.withUri(Uri.parse(offline.uri)) }
             if (track.source != "local") policy.check()
             val cached = resolved[id]?.takeIf { android.os.SystemClock.elapsedRealtime() - it.time < 300_000L }
             if (cached != null) {

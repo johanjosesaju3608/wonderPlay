@@ -13,7 +13,7 @@ import kotlinx.coroutines.withContext
 import java.io.File
 import java.security.MessageDigest
 
-class SourceRegistry(private val context: Context, private val library: LibraryStore) {
+class SourceRegistry(private val context: Context, private val library: LibraryStore, private val downloads: com.wonderplay.download.DownloadRepository? = null) {
     private val youtube = YouTubeMusicSource()
     private val artwork = ArtworkResolver()
     suspend fun search(query: String, offset: Int = 0): SearchResult {
@@ -22,8 +22,10 @@ class SourceRegistry(private val context: Context, private val library: LibraryS
         catch (cancelled: kotlinx.coroutines.CancellationException) { throw cancelled }
         catch (failure: SourceException) { if(local.isNotEmpty()) SearchResult(local) else throw failure }
     }
+    suspend fun offlinePlayback(track: Track) = downloads?.offline(track)
     suspend fun resolvePlayback(track: Track): PlaybackSource = when(track.source) {
         "youtube" -> youtube.resolvePlayback(track)
+        "archive" -> com.wonderplay.download.PermittedAudioSource().find(track)?.let { PlaybackSource(it.url, qualityLabel="Licensed source audio") } ?: throw SourceException("This licensed recording is no longer available.")
         "local" -> withContext(Dispatchers.IO) {
             val uri=Uri.parse(track.streamUrl ?: throw SourceException("Choose this audio file again."))
             try {

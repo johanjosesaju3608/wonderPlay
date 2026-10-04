@@ -1,4 +1,22 @@
-# wonderPlay 1.0.6 validation
+# wonderPlay 1.1.0 validation
+
+- 59 unit tests passed. New checks cover removal of generated Malayalam romanization, exact licensed recording matching, rejected unspecified/spoofed licenses and restricted items, unsafe paths, file-size bounds, truncated bodies and transfer cancellation.
+- 15 Android 15 emulator tests passed. New download checks cover cancellation/replaced-generation publication rejection, completed records after reopening the database, missing-file detection, and downloaded remote-track playback preserving its original ID. Existing playback, shuffle, gestures, expansion, search/library and provider-romanized lyric seeking tests passed.
+- Separate live download: Electric Mirrors — Neon Jesus Wins The World Cup, from the licensed Internet Archive release BSOG0058, completed as 4,548,608 bytes with its CC BY-NC-SA 3.0 source license retained. The private file played through Media3 with “Downloaded · Offline” quality.
+- After force-stopping/restarting the app, that real download remained in Library → Downloads and played with airplane mode enabled and Wi-Fi disabled.
+- Debug/release lint and builds passed. The final signed APK reports versionCode 8 / versionName 1.1.0, passes signature/16 KB alignment verification, and installs over 1.0.6 with the same release key.
+- Final signed-release UI check: licensed-music search found Electric Mirrors, the three-dot menu initiated a real download, completion appeared in Downloads, and the expanded offline player opened with square bottom corners and intact mini-player gestures.
+- Focused read-only review found no critical or important issues in private downloads, cancellation/publication or offline integration.
+
+## Download coverage and storage
+
+Only recognized Creative Commons licenses or CC0 are accepted from Internet Archive netlabel metadata, and restricted items are excluded. Existing remote tracks must match title, artist and duration within five seconds. A public YouTube streaming URL is not treated as download entitlement. The licensed-music browser is separate from YouTube search; no unrelated cover is silently substituted. Catalog license metadata is evidence, not a guarantee that every uploader has valid rights. Source and license links stay visible beside completed downloads.
+
+Downloads have a 128 MiB per-file cap, storage checks and a temporary-file stage. Exact byte count and decodable duration are checked before atomic completion. Cancelled or replaced generations cannot publish. WorkManager persists queued work under system scheduling limits; downloading may wait for suitable connectivity/storage. Completed files live under internal app files, not shared storage, and artwork-cache clearing does not remove them. Existing library schema is untouched; a separate Room database owns downloads. Removing the currently selected downloaded track asks the user to clear the player first. Local/offline playback does not request discovery, lyrics or radio when disconnected.
+
+## Earlier release evidence
+
+## 1.0.6
 
 - 51 unit tests passed, including fallback order/health, NetEase recording matching, LRCLIB short-circuit behavior, romanization availability, public muxed-audio fallback and radio duplicate filtering.
 - 12 Android 15 emulator tests passed, including next-source preparation before the current local track ended, continued playback after transition, and original/romanized lyric switching with unchanged seek timestamps. Existing player, gestures, shuffle, search, library and lyrics checks also passed.

@@ -167,6 +167,7 @@ class PlaybackService : MediaSessionService() {
     }
 
     private fun scheduleRadio() {
+        if(!com.wonderplay.source.connected(this)) return
         if(!networkPolicy.settings.autoplay || !player.playWhenReady || player.playerError != null || player.repeatMode != Player.REPEAT_MODE_OFF || radioJob?.isActive == true) return
         if(android.os.SystemClock.elapsedRealtime() < radioRetryAt) return
         val current = player.currentMediaItem?.let(TrackMediaCodec::track)?.takeIf { it.source == "youtube" } ?: return

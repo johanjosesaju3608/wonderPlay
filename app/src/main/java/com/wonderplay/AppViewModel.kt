@@ -18,6 +18,7 @@ import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.async
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeout
 
 /** Presentation state contains only metadata; audio lifecycle belongs to the service. */
 data class UiState(
@@ -49,6 +50,11 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     private val container = (application as WonderPlayApp).container
     private val library = container.library
     private val sources = container.sources
+    val downloads = container.downloads.entries.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+    val licensedMusic = MutableStateFlow<List<com.wonderplay.download.DownloadEntitlement>>(emptyList())
+    val licensedLoading = MutableStateFlow(false)
+    val licensedError = MutableStateFlow<String?>(null)
+    private var licensedJob: Job? = null
     val player = PlayerController(application, library, sources)
     private val mutableUi = MutableStateFlow(UiState())
     val ui: StateFlow<UiState> = mutableUi.asStateFlow()
@@ -92,6 +98,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun loadDiscovery(force: Boolean = false) {
+        if(!com.wonderplay.source.connected(getApplication())) return
         discoveryRequested = true
         val now = android.os.SystemClock.elapsedRealtime()
         if (chartsJob?.isActive != true && (force || mutableUi.value.charts.isEmpty() || now - chartsLoadedAt > 600_000)) {
@@ -108,6 +115,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         loadRecommendations(history.value, favorites.value, force)
     }
     private fun loadRecommendations(h: List<Track>, f: List<Track>, force: Boolean = false) {
+        if(!com.wonderplay.source.connected(getApplication())) return
         val signature = h.joinToString { it.id } + "|" + f.joinToString { it.id }
         if (!force && signature == discoverySignature) return
         discoverySignature = signature
@@ -135,6 +143,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
 
     fun retryLyrics() { player.state.value.current?.takeIf { it.source != "local" }?.let(::loadLyrics) }
     private fun loadLyrics(track: Track) {
+        if(!com.wonderplay.source.connected(getApplication())) return
         lyricsJob?.cancel()
         mutableLyrics.value = LyricsState(track.id, loading = true)
         lyricsJob = viewModelScope.launch {
@@ -143,6 +152,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
     fun loadFeatured() {
+        if(!com.wonderplay.source.connected(getApplication())) return
         if (featuredJob?.isActive == true) return
         mutableUi.update { it.copy(featuredLoading = true, featuredError = null) }
         featuredJob = viewModelScope.launch {
@@ -216,6 +226,26 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    fun download(track: Track) = mutate {
+        if(track.source=="local") {message("This track is already on your device.");return@mutate}
+        container.downloads.enqueue(track);message("Checking download availability. View progress in Library → Downloads.")
+    }
+    fun cancelDownload(id:String) = mutate {container.downloads.cancel(id)}
+    fun removeDownload(id:String) = mutate {
+        if(player.state.value.current?.id==id) {message("Clear the current player before removing this download.");return@mutate}
+        container.downloads.remove(id)
+    }
+    fun downloadedTrack(entry:com.wonderplay.download.DownloadEntry) = container.downloads.track(entry)
+    fun discoverLicensedMusic(query:String="") {
+        licensedJob?.cancel()
+        licensedJob=viewModelScope.launch {
+            licensedLoading.value=true;licensedError.value=null
+            try { licensedMusic.value=withTimeout(90000) {com.wonderplay.download.PermittedAudioSource().search(query)} }
+            catch(cancelled:CancellationException) {throw cancelled}
+            catch(_:Exception) {licensedError.value="Couldn't load music available for download. Try again."}
+            finally {licensedLoading.value=false}
+        }
+    }
     fun toggleFavorite(track: Track) = mutate { library.toggleFavorite(track) }
     fun createPlaylist(name: String, firstTrack: Track? = null) = mutate {
         val clean = name.trim().take(80)

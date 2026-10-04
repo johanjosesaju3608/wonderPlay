@@ -13,6 +13,7 @@ import org.robolectric.annotation.Config
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35])
 class FreeLyricsTest {
+    @Test fun nonLatinLyricsWithoutProviderRomanizationStayOriginal() { assertNull(Romanization.variant(Lyrics(plain = "മലയാളം"))) }
     @Test fun filmSuffixIsMetadataButLiveVersionsRemainDistinct() {
         assertEquals("Jhoome Jo Pathaan", LyricsRepository.cleanTitle("Jhoome Jo Pathaan (From \"Pathaan\")"))
         assertEquals("Song (Live)", LyricsRepository.cleanTitle("Song (Live)"))

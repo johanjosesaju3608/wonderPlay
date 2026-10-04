@@ -14,4 +14,4 @@ A failed fallback request adds a penalty to that provider’s rank. Two failures
 
 Musixmatch was excluded because no developer key is available. SimpMusic’s lyrics service returned HTTP 403 in the development environment. [BetterLyrics authentication documentation](https://lyrics-api-docs.boidu.dev/docs/authentication) requires a key for uncached requests to its general endpoint, so it was not selected as an automatic key-free fallback. These observations do not claim permanent service unavailability.
 
-Provider romanization is preferred. On Android 10 or newer, native ICU can alternatively transliterate supported non-Latin text on the device. The option appears only when it produces Latin text; it is labeled romanization, not English translation. Original timestamps remain unchanged. Unavailable lyrics retain retry and external web-search actions.
+Romanization is available only when supplied by the matched lyrics provider, with attribution and its original timestamps. There is no on-device generated transliteration. Unavailable lyrics retain retry and external web-search actions.

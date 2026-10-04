@@ -36,7 +36,7 @@ internal fun LibraryScreen(vm: AppViewModel, favorites: List<Track>, history: Li
         } else {
             ScreenHeader("Your library", "Kept close. Always yours.", action = { TactileIcon(Icons.Rounded.Add, "Create playlist", { create = true }) })
             Row(Modifier.horizontalScroll(rememberScrollState()).padding(horizontal = Space.page).padding(bottom = 12.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                listOf("all" to "Overview", "favorites" to "Favorites", "local" to "On device", "albums" to "Albums", "artists" to "Artists", "history" to "History").forEach { (id, label) ->
+                listOf("all" to "Overview", "favorites" to "Favorites", "local" to "On device", "downloads" to "Downloads", "albums" to "Albums", "artists" to "Artists", "history" to "History").forEach { (id, label) ->
                     val haptics = LocalWonderHaptics.current
                     FilterChip(selected = route == id, onClick = { haptics.perform(HapticEvent.SELECT); onRoute(id) }, label = { Text(label) },
                         shape = Shape.control, border = null,
@@ -45,6 +45,7 @@ internal fun LibraryScreen(vm: AppViewModel, favorites: List<Track>, history: Li
                 }
             }
             when (route) {
+                "downloads" -> DownloadsScreen(vm,onMenu)
                 "all" -> LazyColumn(contentPadding = PaddingValues(bottom = 24.dp + LocalOverlayBottom.current)) {
                     item { Row(Modifier.padding(horizontal = Space.page, vertical = 4.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                         LibraryTile("Favorites", "${favorites.size} tracks", Icons.Rounded.Favorite, Modifier.weight(1f)) { onRoute("favorites") }

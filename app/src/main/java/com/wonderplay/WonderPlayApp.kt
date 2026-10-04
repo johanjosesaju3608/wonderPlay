@@ -10,5 +10,6 @@ class WonderPlayApp : Application() {
 
 class AppContainer(application: Application) {
     val library = LibraryRepository(application)
-    val sources = SourceRegistry(application, library)
+    val downloads = com.wonderplay.download.DownloadRepository(application, library)
+    val sources = SourceRegistry(application, library, downloads)
 }

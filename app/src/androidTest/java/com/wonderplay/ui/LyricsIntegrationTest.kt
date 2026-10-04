@@ -57,7 +57,7 @@ class LyricsIntegrationTest {
     }
 
     @Test fun romanizationPillPreservesSeekingAndReturnsToOriginal() {
-        val original = Lyrics(lines = listOf(com.wonderplay.source.LyricLine(1000, "नमस्ते"), com.wonderplay.source.LyricLine(5000, "दुनिया")))
+        val original = Lyrics(lines = listOf(com.wonderplay.source.LyricLine(1000, "नमस्ते"), com.wonderplay.source.LyricLine(5000, "दुनिया")), romanizedLines = listOf(com.wonderplay.source.LyricLine(1000, "namaste"), com.wonderplay.source.LyricLine(5000, "duniya")), romanizationSource = "NetEase")
         var sought = -1L
         compose.setContent { WonderTheme(AppSettings(reducedMotion = true)) { FullLyrics(original, track, 0, { sought = it }, {}, false, {}) } }
         compose.waitUntil(5000) { compose.onAllNodesWithText("Romanized").fetchSemanticsNodes().isNotEmpty() }

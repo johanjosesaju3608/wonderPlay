@@ -5,7 +5,7 @@ wonderPlay has no account service, telemetry endpoint, ad SDK, cloud inference, 
 
 ## Data on your device
 
-Room stores track metadata, favorites, playlists and their order, listening history, recent searches, selected local-file URIs, and the saved queue/position. DataStore stores preferences. Coil caches artwork in memory and the app cache. Ordinary ExoPlayer buffering supports streaming; there is no download manager or permanent stream cache.
+Room stores track metadata, favorites, playlists and their order, listening history, recent searches, selected local-file URIs, and the saved queue/position. DataStore stores preferences. Coil caches artwork in memory and the app cache. Ordinary ExoPlayer buffering supports streaming; completed eligible downloads are stored separately in private internal storage.
 
 Library data is private app storage. Android cloud backup is disabled. Clearing app data or uninstalling deletes it. Clearing listening history and recent searches is available in the app. Choosing local files grants read access through Android's Storage Access Framework; files are not uploaded or copied into a music download directory.
 
@@ -38,4 +38,12 @@ There is no microphone, camera, location, contacts, phone state, broad file acce
 
 Recommendations rank music on your device using recent remote listening and favorites. Up to three preferred artist names are sent to YouTube Music to find new songs. Local-file metadata is excluded. There is no cloud inference or developer recommendation backend. Charts and starter discovery also use anonymous YouTube Music requests.
 
-Optional autoplay sends the current remote track identifier to YouTube Music for radio suggestions. The next track may be resolved and buffered before the current song finishes. Wi-Fi-only playback restrictions also apply to that buffering. Romanization uses provider-supplied text or Android’s on-device ICU transliteration; lyrics are not sent to a translation service.
+Optional autoplay sends the current remote track identifier to YouTube Music for radio suggestions. The next track may be resolved and buffered before the current song finishes. Wi-Fi-only playback restrictions also apply to that buffering. Romanization uses provider-supplied text; lyrics are not sent to a translation service.
+
+## Private offline downloads
+
+Downloads are explicit user requests managed by Android WorkManager. Audio and artwork are saved only in the app’s private internal storage, with no export, sharing or public Downloads-folder access. Cancelling removes partial data; clearing artwork cache does not remove completed downloads. Removing a download, clearing app data or uninstalling removes its private files. Download state is stored in a separate local database, preserving your existing library.
+
+Internet Archive (`archive.org` and its media hosts) receives artist/title or licensed-music discovery queries, item identifiers, published-license metadata requests and requested audio/artwork. The app accepts recognized Creative Commons licenses only, excludes restricted items, and checks title, artist and duration before matching a recording to a YouTube search result. Public streaming availability is not download authorization. License and source links remain visible in Downloads. Published metadata cannot establish a universal legal guarantee; users must observe the displayed license conditions, including noncommercial limits where applicable.
+
+Completed downloaded tracks play without network access, including when Wi-Fi-only streaming is enabled. An unavailable matching licensed recording remains streamable online but cannot be downloaded by this feature. There are no private YouTube/Premium downloads or rights-bypassing fallbacks. Romanization now comes only from a matched lyrics provider; no on-device generated transliteration is used.

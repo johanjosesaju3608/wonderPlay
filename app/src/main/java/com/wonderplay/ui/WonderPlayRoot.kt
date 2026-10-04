@@ -104,6 +104,7 @@ fun WonderPlayRoot(viewModel:AppViewModel) {
                 ModalBottomSheet(onDismissRequest={menu=null},containerColor=MaterialTheme.colorScheme.surface) {
                     TrackRow(track,{vm.player.play(listOf(track));menu=null},{menu=null})
                     ActionRow(if(favorites.any { it.id==track.id }) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder,"${if(favorites.any { it.id==track.id }) "Remove from" else "Add to"} favorites") { vm.toggleFavorite(track); menu=null }
+                    DownloadAction(track,vm,menu=true,onDone={menu=null})
                     ActionRow(Icons.Rounded.PlaylistPlay,"Play next") { vm.player.addNext(track); menu=null }
                     ActionRow(Icons.Rounded.QueueMusic,"Add to queue") { vm.player.enqueue(track); menu=null }
                     ActionRow(Icons.Rounded.PlaylistAdd,"Add to playlist") { addTrack=track; menu=null }

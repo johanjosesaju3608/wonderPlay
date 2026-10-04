@@ -3,7 +3,7 @@ package com.wonderplay.data
 import com.wonderplay.domain.Track
 import org.json.JSONObject
 
-/** Stable metadata-only storage; remote audio is never downloaded or persisted. */
+/** Stable metadata-only storage; download state is maintained separately. */
 internal object TrackCodec {
     fun encode(track: Track): String = JSONObject().apply {
         put("id", track.id); put("title", track.title); put("artist", track.artist)

@@ -36,3 +36,7 @@ Song search keeps its own NewPipe paging cursor. Collection search uses an indep
 The service anchors shuffle order to the current queue occurrence when shuffle is enabled or the queue is replaced. The controller publishes Media3's playback order for Up Next. Local tracks do not request lyrics. The floating navigation uses the existing dynamic Material colors and honors reduced motion.
 
 Media3 preloads eight seconds of the next queue item. Near the end of a remote queue, anonymous YouTube Music radio suggestions are filtered for duplicate recordings and appended only if the queue occurrence snapshot remains unchanged. Autoplay is optional and excludes local files.
+
+## Private downloads (1.1)
+
+DownloadRepository uses a separate Room database and WorkManager unique jobs. PermittedAudioSource looks up Internet Archive netlabels with recognized licenses, validates recording metadata, and rechecks the item before a transfer. Downloads are bounded temporary files validated before atomic publication; generation/status checks prevent stale or cancelled workers publishing. PlaybackResolver selects completed private audio before remote network policy and streaming resolution. The existing library database schema and track IDs are retained. Downloaded artwork stays with the private file, separate from Coil cache. Romanization now accepts only provider-supplied variants; native ICU conversion has been removed.

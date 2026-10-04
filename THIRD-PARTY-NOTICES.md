@@ -11,7 +11,7 @@ Original wonderPlay source is MIT licensed (see LICENSE). The combined applicati
 | Protobuf Java Lite | BSD-3-Clause | https://github.com/protocolbuffers/protobuf |
 | JDK desugaring library | GPL-2.0 with Classpath Exception | https://github.com/google/desugar_jdk_libs |
 | Kotlin and kotlinx.coroutines | Apache-2.0 | https://github.com/JetBrains/kotlin ; https://github.com/Kotlin/kotlinx.coroutines |
-| AndroidX Core, Activity, Lifecycle, Compose, Material, Room, DataStore, Palette, SplashScreen | Apache-2.0 | https://android.googlesource.com/platform/frameworks/support/ |
+| AndroidX Core, Activity, Lifecycle, Compose, Material, Room, DataStore, WorkManager, Palette, SplashScreen | Apache-2.0 | https://android.googlesource.com/platform/frameworks/support/ |
 | AndroidX Media3 / ExoPlayer | Apache-2.0 | https://github.com/androidx/media |
 | Coil | Apache-2.0 | https://github.com/coil-kt/coil |
 | OkHttp and Okio | Apache-2.0 | https://github.com/square/okhttp ; https://github.com/square/okio |
