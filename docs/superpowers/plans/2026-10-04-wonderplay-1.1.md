@@ -45,7 +45,7 @@ Files: PlaybackResolution.kt, SourceRegistry.kt, AppViewModel.kt, DownloadsScree
 ### Task 4: Verification/release
 - [x] Run unit tests, Android integration tests, debug/release lint and builds; request focused fresh review.
 - [x] Verify signed update over 1.0.6, private offline playback and final screens.
-- [ ] Update privacy/docs, commit/push and publish signed 1.1.0 APK/checksum; verify public download hash.
+- [x] Update privacy/docs, commit/push and publish signed 1.1.0 APK/checksum; verify public download hash.
 
 ## Execution rulings
 - Work in the existing task-owned checkout to preserve configured builds/signing and the approved local spec; no unrelated user checkout is being modified.
@@ -53,3 +53,5 @@ Files: PlaybackResolution.kt, SourceRegistry.kt, AppViewModel.kt, DownloadsScree
 - Public license metadata is not a blanket legal guarantee. Download coverage is limited to matched eligible recordings; no source-ripping fallback.
 
 Verification ledger: 59 unit tests, 15 Android tests and a separate real licensed-download check passed. Offline playback after force-stop with airplane mode/Wi-Fi disabled passed. Final debug/release lint/build and signed update over 1.0.6 passed; same certificate and 16 KB alignment verified. Focused review reported no critical/important findings.
+
+Published v1.1.0 and verified the public APK matches the tested local release checksum. Repository About description refreshed.
